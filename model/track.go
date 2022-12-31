@@ -1,6 +1,9 @@
 package model
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 type Tracker struct{}
 
@@ -60,4 +63,17 @@ func (t Tracker) Parse(csv [][]string) (Tracks, TrackArtistAlbumMap) {
 		trackMap[track.Artist][track.Album] = append(trackMap[track.Artist][track.Album], track.Title)
 	}
 	return tracks, trackMap
+}
+
+func (tracks Tracks) Analysis() string {
+	return fmt.Sprintf("%d songs", len(tracks))
+}
+
+func (tMap TrackArtistAlbumMap) Analysis() string {
+	artists := len(tMap)
+	albums := 0
+	for _, aMap := range tMap {
+		albums += len(aMap)
+	}
+	return fmt.Sprintf("%d artists, %d albums", artists, albums)
 }

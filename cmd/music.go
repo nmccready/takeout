@@ -10,9 +10,13 @@ import (
 )
 
 var meta string
+var analyze bool
+var doTrackMap bool
 
 func init() {
 	musicCmd.Flags().StringVarP(&meta, "meta", "m", "", "filepath and file name of music meta to reorganize (required)")
+	musicCmd.Flags().BoolVarP(&analyze, "analyze", "a", false, "print tracks analysis")
+	musicCmd.Flags().BoolVarP(&doTrackMap, "trackMap", "t", false, "print trackMap")
 	err := musicCmd.MarkFlagRequired("meta")
 
 	if err != nil {
@@ -27,8 +31,6 @@ var musicCmd = &cobra.Command{
 	Short: "Reorg the music files into their csc dir struct",
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		fmt.Printf("meta: %s\n", meta)
-
 		file, err := os.Open(meta)
 		if err != nil {
 			return err
@@ -36,9 +38,15 @@ var musicCmd = &cobra.Command{
 		reader := csv.NewReader(file)
 		records, _ := reader.ReadAll()
 
-		_, trackMap := model.Tracker{}.Parse(records)
+		tracks, trackMap := model.Tracker{}.Parse(records)
 
-		fmt.Println(model.ToJSONPretty(trackMap))
+		if doTrackMap {
+			fmt.Println(model.ToJSONPretty(trackMap))
+		}
+
+		if analyze {
+			fmt.Printf("Analysis: %s, %s\n", trackMap.Analysis(), tracks.Analysis())
+		}
 		return nil
 	},
 }
