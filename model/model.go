@@ -1,6 +1,12 @@
 package model
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/nmccready/takeout/logger"
+)
+
+var debug = logger.Spawn("model")
 
 func ToJSON(thing interface{}) string {
 	body, _ := json.Marshal(thing)
