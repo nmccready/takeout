@@ -36,9 +36,9 @@ var musicCmd = &cobra.Command{
 		reader := csv.NewReader(file)
 		records, _ := reader.ReadAll()
 
-		tracks := model.Tracks{}.Parse(records)
+		_, trackMap := model.Tracker{}.Parse(records)
 
-		fmt.Println(model.ToJSONPretty(tracks))
+		fmt.Println(model.ToJSONPretty(trackMap))
 		return nil
 	},
 }

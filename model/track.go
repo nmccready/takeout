@@ -2,6 +2,8 @@ package model
 
 import "strings"
 
+type Tracker struct{}
+
 type Track struct {
 	Title          string
 	Album          string
@@ -11,6 +13,17 @@ type Track struct {
 }
 
 type Tracks []Track
+type Songs []string
+type AlbumMap map[string]Songs
+
+/*
+"Tool": {
+	"Fear Innoculumn": [
+		"Tempest.mp3"
+	]
+}
+*/
+type TrackArtistAlbumMap map[string]AlbumMap
 
 func toTrack(row []string) Track {
 	track := Track{}
@@ -26,12 +39,25 @@ func toTrack(row []string) Track {
 	return track
 }
 
-func (tracks Tracks) Parse(csv [][]string) Tracks {
+// note Empty String for Album or Artist is Unknown
+func (t Tracker) Parse(csv [][]string) (Tracks, TrackArtistAlbumMap) {
+	tracks := Tracks{}
+	trackMap := TrackArtistAlbumMap{}
 	for ri, row := range csv {
 		if ri == 0 {
 			continue // skip header
 		}
-		tracks = append(tracks, toTrack(row))
+		track := toTrack(row)
+		tracks = append(tracks, track)
+		if trackMap[track.Artist] == nil {
+			trackMap[track.Artist] = AlbumMap{track.Album: {track.Title}}
+			continue
+		}
+		if trackMap[track.Artist][track.Album] == nil {
+			trackMap[track.Artist][track.Album] = Songs{track.Title}
+			continue
+		}
+		trackMap[track.Artist][track.Album] = append(trackMap[track.Artist][track.Album], track.Title)
 	}
-	return tracks
+	return tracks, trackMap
 }
