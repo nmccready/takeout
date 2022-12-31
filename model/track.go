@@ -161,7 +161,7 @@ func (tMap TrackArtistAlbumMap) Analysis() string {
 	return fmt.Sprintf("%d artists, %d albums", artists, albums)
 }
 
-var incrementedFileName = regexp.MustCompile("(.*)\\(\\d\\)")
+var incrementedFileName = regexp.MustCompile(`(.*)\(\d\)`)
 
 /*
 	Title Names to Filenames considerations
