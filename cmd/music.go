@@ -30,6 +30,7 @@ var musicCmd = &cobra.Command{
 		err, tracks, trackMap := model.Tracker{}.ParseMp3Glob(mp3Path)
 
 		if err != nil {
+			fmt.Println(err.Error())
 			return err
 		}
 
