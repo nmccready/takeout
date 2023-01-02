@@ -143,29 +143,38 @@ func (t Tracker) ParseMp3Glob(mp3Path string) (error, Tracks, TrackArtistAlbumMa
 		// 	return err, nil, nil
 		// }
 
+		basename := strings.ReplaceAll(osPath.Base(path), osPath.Ext(path), "")
+		// partial id3 read / fix
+		if err == nil && track.Title == "" &&
+			track.Artist != "" &&
+			track.Album != "" {
+			track.Title = basename
+		}
+
 		// BEGIN FALLBACK TO METADATA FILE
 		if err != nil || track.Title == "" {
+			// if err != nil {
+			// 	debug.Error(err.Error()) // usually no tag found
+			// }
 			// utilize csv to derive the info via grep / regex
-			basename := strings.ReplaceAll(osPath.Base(path), osPath.Ext(path), "")
-			mp3FileNames := cleanTrackMp3FileName(basename)
-			debug.Log("mp3FileNames: %s", ToJSON(mp3FileNames))
+			mp3FileName := cleanTrackMp3FileName(basename)
+
 			var matches [][]string
-			var regexStr string
-			var trackRegex *regexp.Regexp
+			var regexStr, titleRegexStr string
+			var trackRegex, titleRegex *regexp.Regexp
 			// grep basic raw file
-			for _, mp3FileName := range mp3FileNames {
-				regexStr = ".*" + safeRegex(mp3FileName) + ".*"
-				debug.Log(gDebug.Fields{
-					"regexStr": regexStr,
-					"basename": basename,
-				})
-				trackRegex = regexp.MustCompile(regexStr)
-				matches = trackRegex.FindAllStringSubmatch(csv, -1)
-				debug.Log("matches: %s", ToJSON(matches))
-				if len(matches) > 0 {
-					break
-				}
-			}
+			titleMatchStr := `[\s|\w|)|(|\[|\]|\.|,|&|#|!]*"?,`
+			regexStr = `(?m)^"?` + safeRegex(mp3FileName) + titleMatchStr + ".*"
+			titleRegexStr = safeRegex(mp3FileName)
+			debug.Log(gDebug.Fields{
+				"regexStr":      regexStr,
+				"titleRegexStr": titleRegexStr,
+				"basename":      basename,
+			})
+			trackRegex = regexp.MustCompile(regexStr)
+			titleRegex = regexp.MustCompile(titleRegexStr)
+			matches = trackRegex.FindAllStringSubmatch(csv, -1)
+			debug.Log("matches: %s", ToJSON(matches))
 			if len(matches) == 0 {
 				debug.Error("Cannot Resolve Metadata!")
 				return err, nil, nil
@@ -181,9 +190,15 @@ func (t Tracker) ParseMp3Glob(mp3Path string) (error, Tracks, TrackArtistAlbumMa
 					"_track":   _track,
 					"regexStr": regexStr,
 				})
-				if trackRegex.MatchString(_track.Title) {
+				if titleRegex.MatchString(_track.Title) {
 					track = _track
 					break
+				} else {
+					debug.Log(gDebug.Fields{
+						"titleRegexStr": titleRegexStr,
+						"_track.Title":  _track.Title,
+						"basename":      basename,
+					})
 				}
 			}
 			if track.Title == "" {
@@ -260,14 +275,8 @@ var incrementedFileName = regexp.MustCompile(`(.*)\(\d+\)`)
 
 	We need to make some potential matches to search the meta file
 */
-func cleanTrackMp3FileName(filename string) []string {
-	underscore := incrementedFileName.ReplaceAllString(filename, "$1")
-	// star := incrementedFileName.ReplaceAllString(strings.ReplaceAll(filename, "_", `\*`), "$1")
-	// ampersand := incrementedFileName.ReplaceAllString(strings.ReplaceAll(filename, "_", "&"), "$1")
-	// single := incrementedFileName.ReplaceAllString(strings.ReplaceAll(filename, "_", "'"), "$1")
-	// double := incrementedFileName.ReplaceAllString(strings.ReplaceAll(filename, "_", `"`), "$1")
-	// return []string{underscore, star, ampersand, single, double}
-	return []string{underscore}
+func cleanTrackMp3FileName(filename string) string {
+	return incrementedFileName.ReplaceAllString(filename, "$1")
 }
 
 var specialChars = []string{"(", ")", "[", "]", "#", "!", "$", "*", "+"}
