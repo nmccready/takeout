@@ -1,16 +1,11 @@
 package model
 
 import (
-	"encoding/csv"
 	"fmt"
 	"os"
-	osPath "path"
-	"path/filepath"
-	"regexp"
 	"strings"
 
 	id3 "github.com/dhowden/tag"
-	gDebug "github.com/nmccready/go-debug"
 )
 
 type Tracker struct{}
@@ -109,138 +104,6 @@ func (t Track) ParseId3(mp3FileName string) (error, Track) {
 	return nil, t
 }
 
-func (t Tracker) ParseMp3Glob(mp3Path string) (error, Tracks, TrackArtistAlbumMap) {
-	tracks := Tracks{}
-	trackMap := TrackArtistAlbumMap{}
-
-	paths, err := filepath.Glob(mp3Path + "/" + "*.mp3")
-	if err != nil {
-		return err, nil, nil
-	}
-
-	csvPaths, err := filepath.Glob(mp3Path + "/*.csv")
-	if err != nil {
-		return err, nil, nil
-	}
-	csvPath := csvPaths[0] // fallback if id3 fails
-
-	bytes, err := os.ReadFile(csvPath)
-
-	if err != nil {
-		return err, nil, nil
-	}
-
-	csv := string(bytes)
-
-	for _, path := range paths {
-		debug.Log("path: %s", path)
-		err, track := Track{}.ParseId3(path)
-		// var err error
-		// track := Track{}
-
-		// if err != nil {
-		// 	debug.Error(gDebug.Fields{"path": path})
-		// 	return err, nil, nil
-		// }
-
-		basename := strings.ReplaceAll(osPath.Base(path), osPath.Ext(path), "")
-		// partial id3 read / fix
-		if err == nil && track.Title == "" &&
-			track.Artist != "" &&
-			track.Album != "" {
-			track.Title = basename
-		}
-
-		// BEGIN FALLBACK TO METADATA FILE
-		if err != nil || track.Title == "" {
-			// if err != nil {
-			// 	debug.Error(err.Error()) // usually no tag found
-			// }
-			// utilize csv to derive the info via grep / regex
-			mp3FileName := cleanTrackMp3FileName(basename)
-
-			var matches [][]string
-			var regexStr, titleRegexStr string
-			var trackRegex, titleRegex *regexp.Regexp
-			// grep basic raw file
-			titleMatchStr := `[\s|\w|)|(|\[|\]|\.|,|&|#|!]*"?,`
-			regexStr = `(?m)^"?` + safeRegex(mp3FileName) + titleMatchStr + ".*"
-			titleRegexStr = safeRegex(mp3FileName)
-			debug.Log(gDebug.Fields{
-				"regexStr":      regexStr,
-				"titleRegexStr": titleRegexStr,
-				"basename":      basename,
-			})
-			trackRegex = regexp.MustCompile(regexStr)
-			titleRegex = regexp.MustCompile(titleRegexStr)
-			matches = trackRegex.FindAllStringSubmatch(csv, -1)
-			debug.Log("matches: %s", ToJSON(matches))
-			if len(matches) == 0 {
-				debug.Error("Cannot Resolve Metadata!")
-				return err, nil, nil
-			}
-			// grep tracks
-			tracks, err := grepToTracks(flattenMatches(matches))
-			if err != nil {
-				debug.Error("grepToTracks! %w", err)
-				return err, nil, nil
-			}
-			for _, _track := range tracks {
-				debug.Log(gDebug.Fields{
-					"_track":   _track,
-					"regexStr": regexStr,
-				})
-				if titleRegex.MatchString(_track.Title) {
-					track = _track
-					break
-				} else {
-					debug.Log(gDebug.Fields{
-						"titleRegexStr": titleRegexStr,
-						"_track.Title":  _track.Title,
-						"basename":      basename,
-					})
-				}
-			}
-			if track.Title == "" {
-				err = fmt.Errorf("Missing Title from file %s", basename)
-				debug.Error(err.Error())
-				return err, nil, nil
-			}
-			matches = nil
-		}
-		debug.Log("track: %s", ToJSON(track))
-		tracks = append(tracks, track)
-		trackMap.Add(&track)
-	}
-
-	return nil, tracks, trackMap
-}
-
-func flattenMatches(rootMatches [][]string) []string {
-	flat := []string{}
-	for _, matches := range rootMatches {
-		flat = append(flat, matches...)
-	}
-	return flat
-}
-
-func grepToCsv(matches []string) ([][]string, error) {
-	reader := csv.NewReader(strings.NewReader(strings.Join(matches, "\n")))
-	return reader.ReadAll()
-}
-
-func grepToTracks(matches []string) (Tracks, error) {
-	tracks := Tracks{}
-	rows, err := grepToCsv(matches)
-	if err != nil {
-		return nil, err
-	}
-	for _, r := range rows {
-		tracks = append(tracks, toTrack(r, ""))
-	}
-	return tracks, nil
-}
-
 func (trackMap TrackArtistAlbumMap) Add(track *Track) {
 	if trackMap[track.Artist] == nil {
 		trackMap[track.Artist] = AlbumMap{track.Album: {track.Title}}
@@ -266,29 +129,6 @@ func (tMap TrackArtistAlbumMap) Analysis() string {
 	return fmt.Sprintf("%d artists, %d albums", artists, albums)
 }
 
-var incrementedFileName = regexp.MustCompile(`(.*)\(\d+\)`)
-
-/*
-	Title Names to Filenames considerations
-
-	It appears ' " * are substituted for _ in track file names
-
-	We need to make some potential matches to search the meta file
-*/
-func cleanTrackMp3FileName(filename string) string {
-	return incrementedFileName.ReplaceAllString(filename, "$1")
-}
-
-var specialChars = []string{"(", ")", "[", "]", "#", "!", "$", "*", "+"}
-
-// escape special chars for regex
-// handle / relax _ meaning as Google uses it for a lot
-func safeRegex(filename string) string {
-	for _, char := range specialChars {
-		filename = strings.ReplaceAll(filename, char, `\`+char)
-	}
-	// google fudge factor (_ utilized for swearing, and all the following chars)
-	// %% to escape fmt.Sprintf to single %
-	filename = strings.ReplaceAll(filename, "_", `[%%|\*|&|'|"|/|:|?\|_]+`)
-	return filename
+func (track Track) ToMetaRow() string {
+	return fmt.Sprintf("%s,%s,%s", track.Title, track.Album, track.Artist)
 }

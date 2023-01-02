@@ -9,25 +9,25 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var meta string
+var mp3 string
 
 func init() {
-	musicMeta.Flags().BoolVarP(&analyze, "analyze", "a", false, "print tracks analysis")
-	musicMeta.Flags().BoolVarP(&doTrackMap, "trackMap", "t", false, "print trackMap")
-	musicCmd.AddCommand(musicMeta)
+	musicId3.Flags().BoolVarP(&analyze, "analyze", "a", false, "print tracks analysis")
+	musicId3.Flags().BoolVarP(&doTrackMap, "trackMap", "t", false, "print trackMap")
+	musicCmd.AddCommand(musicId3)
 }
 
 var musicMeta = &cobra.Command{
 	Use:   "meta",
 	Short: "read the meta file to compare to id3",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		meta = args[0]
+		mp3 = args[0]
 
-		if meta == "" {
+		if mp3 == "" {
 			panic("filepath and file name of music meta is required")
 		}
 
-		file, err := os.Open(meta)
+		file, err := os.Open(mp3)
 		if err != nil {
 			return err
 		}
