@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 
+	_strings "github.com/nmccready/takeout/strings"
+
 	id3 "github.com/dhowden/tag"
 )
 
@@ -24,13 +26,47 @@ type Songs []string
 type AlbumMap map[string]Songs
 
 /*
-"Tool": {
-	"Fear Innoculumn": [
-		"Tempest.mp3"
-	]
-}
+	"Tool": {
+		"Fear Innoculumn": [
+			"Tempest.mp3"
+		]
+	}
 */
 type TrackArtistAlbumMap map[string]AlbumMap
+
+func (m1 TrackArtistAlbumMap) Merge(m2 TrackArtistAlbumMap) TrackArtistAlbumMap {
+	merged := make(TrackArtistAlbumMap)
+	for k, v := range m1 {
+		merged[k] = v
+	}
+
+	for key, value := range m2 {
+		album, hasValue := merged[key]
+		if hasValue {
+			album.Merge(value)
+			continue
+		}
+		merged[key] = value
+	}
+	return merged
+}
+
+func (m1 AlbumMap) Merge(m2 AlbumMap) AlbumMap {
+	merged := make(AlbumMap)
+	for k, v := range m1 {
+		merged[k] = v
+	}
+
+	for key, value := range m2 {
+		songs, hasValue := merged[key]
+		if hasValue {
+			merged[key] = append(songs, value...)
+			continue
+		}
+		merged[key] = value
+	}
+	return merged
+}
 
 func toTrack(row []string, origFilename string) Track {
 	debug.Log("row: %s", ToJSON(row))
@@ -71,12 +107,12 @@ func (t Tracker) ParseCsv(csv [][]string) (Tracks, TrackArtistAlbumMap) {
 }
 
 /*
-	Main entry to try out different Id3 libs
+Main entry to try out different Id3 libs
 
-	Also tried:
+Also tried:
 
-	"github.com/bogem/id3v2/v2" kinda works
-	"github.com/xonyagar/id3" v23 failures not much info but bad frames
+"github.com/bogem/id3v2/v2" kinda works
+"github.com/xonyagar/id3" v23 failures not much info but bad frames
 */
 func (t Track) ParseId3(mp3FileName string) (error, Track) {
 	// tag, err := id3v2.Open(mp3FileName, id3v2.Options{Parse: true})
@@ -104,16 +140,26 @@ func (t Track) ParseId3(mp3FileName string) (error, Track) {
 	return nil, t
 }
 
+func (t Track) GetArtistKey() string {
+	artist := _strings.UnknownArtist
+	if t.Artist != "" {
+		artist = t.Artist
+	}
+	return artist
+}
+
+// warn about empty Artists??
 func (trackMap TrackArtistAlbumMap) Add(track *Track) {
-	if trackMap[track.Artist] == nil {
-		trackMap[track.Artist] = AlbumMap{track.Album: {track.Title}}
+	artist := track.GetArtistKey()
+	if trackMap[artist] == nil {
+		trackMap[artist] = AlbumMap{track.Album: {track.Title}}
 		return
 	}
-	if trackMap[track.Artist][track.Album] == nil {
-		trackMap[track.Artist][track.Album] = Songs{track.Title}
+	if trackMap[artist][track.Album] == nil {
+		trackMap[artist][track.Album] = Songs{track.Title}
 		return
 	}
-	trackMap[track.Artist][track.Album] = append(trackMap[track.Artist][track.Album], track.Title)
+	trackMap[artist][track.Album] = append(trackMap[artist][track.Album], track.Title)
 }
 
 func (tracks Tracks) Analysis() string {

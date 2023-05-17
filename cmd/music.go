@@ -27,7 +27,8 @@ var musicCmd = &cobra.Command{
 			panic("mp3Path required")
 		}
 
-		err, tracks, trackMap := model.Tracker{}.ParseMp3Glob(mp3Path)
+		// err, tracks, trackMap := model.Tracker{}.ParseMp3Glob(mp3Path)
+		err, _, trackMap := model.Tracker{}.ParseMp3Glob(mp3Path)
 
 		if err != nil {
 			fmt.Println(err.Error())
@@ -39,7 +40,9 @@ var musicCmd = &cobra.Command{
 		}
 
 		if analyze {
-			fmt.Printf("Analysis: %s, %s\n", trackMap.Analysis(), tracks.Analysis())
+			// fmt.Printf("Analysis: %s, %s\n", trackMap.Analysis(), tracks.Analysis())
+			fmt.Printf("Track Map Analysis: %s\n", trackMap.Analysis())
+			// fmt.Printf("Track Analysis: %s\n", tracks.Analysis())
 		}
 		return nil
 	},

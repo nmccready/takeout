@@ -7,14 +7,15 @@ import (
 	osPath "path"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
+	"sync"
 
 	gDebug "github.com/nmccready/go-debug"
+	"github.com/nmccready/takeout/slice"
 )
 
 func (t Tracker) ParseMp3Glob(mp3Path string) (error, Tracks, TrackArtistAlbumMap) {
-	tracks := Tracks{}
-	trackMap := TrackArtistAlbumMap{}
 
 	paths, err := filepath.Glob(mp3Path + "/" + "*.mp3")
 	if err != nil {
@@ -33,10 +34,87 @@ func (t Tracker) ParseMp3Glob(mp3Path string) (error, Tracks, TrackArtistAlbumMa
 		return err, nil, nil
 	}
 
-	csv := string(bytes)
-	removedCsv := ""
+	cpuNum := runtime.NumCPU()
+	runtime.GOMAXPROCS(cpuNum)
+	debug.Log("cpuNum: %d", cpuNum)
+	var wg sync.WaitGroup
+	wg.Add(cpuNum)
+	jobChannel := make(chan Job)
 
-	for _, path := range paths {
+	jobs := pathsToJobs(bytes, paths, cpuNum)
+	jobResultChannel := make(chan JobResult, len(jobs))
+
+	for i := 0; i < cpuNum; i++ {
+		go worker(i, &wg, jobChannel, jobResultChannel)
+	}
+
+	// Send jobs to worker
+	for _, job := range jobs {
+		jobChannel <- job
+	}
+	close(jobChannel)
+	wg.Wait()
+	close(jobResultChannel)
+
+	var jobResults []JobResult
+	// Receive job results from workers
+	for result := range jobResultChannel {
+		jobResults = append(jobResults, result)
+	}
+
+	// merge together all Job Chunks / Maps etc.
+	albumMap := TrackArtistAlbumMap{}
+	tracks := Tracks{}
+	for _, result := range jobResults {
+		albumMap = albumMap.Merge(result.TrackArtistAlbumMap)
+		tracks = append(result.Tracks, tracks...)
+	}
+	return nil, tracks, albumMap
+}
+
+func pathsToJobs(csv []byte, paths []string, chunks int) []Job {
+	jobs := []Job{}
+	pathChunks := slice.ChunkBy[string](paths, chunks)
+	for _, pathsChunk := range pathChunks {
+		jobs = append(jobs, Job{
+			Paths: pathsChunk,
+			Csv:   string(csv),
+		})
+	}
+	return jobs
+}
+
+type Job struct {
+	Csv   string
+	Paths []string
+}
+
+type JobResult struct {
+	Error error
+	Tracks
+	TrackArtistAlbumMap
+}
+
+func worker(id int, wg *sync.WaitGroup, jobChannel chan Job, jobResultChannel chan JobResult) {
+	defer wg.Done()
+	for job := range jobChannel {
+		processPathChunks(id, job, jobResultChannel)
+	}
+}
+
+/*
+Take a group of paths and out put them as a slice and map of tracks
+map:
+
+	Artists -> Album -> Songs
+*/
+func processPathChunks(id int, job Job, jobResultChannel chan JobResult) {
+	removedCsv := ""
+	tracks := Tracks{}
+	trackMap := TrackArtistAlbumMap{}
+	csv := job.Csv
+
+	for _, path := range job.Paths {
 		debug.Log("path: %s", path)
 		err, track := Track{}.ParseId3(path)
 
@@ -88,13 +166,15 @@ func (t Tracker) ParseMp3Glob(mp3Path string) (error, Tracks, TrackArtistAlbumMa
 			debug.Log("matches: %s", ToJSON(matches))
 			if len(matches) == 0 {
 				debug.Error("Cannot Resolve Metadata!")
-				return err, nil, nil
+				jobResultChannel <- JobResult{Error: err}
+				return
 			}
 			// grep tracks
 			tracks, err := grepToTracks(flattenMatches(matches))
 			if err != nil {
 				debug.Error("grepToTracks! %w", err)
-				return err, nil, nil
+				jobResultChannel <- JobResult{Error: err}
+				return
 			}
 			for _, _track := range tracks {
 				debug.Log(gDebug.Fields{
@@ -115,7 +195,8 @@ func (t Tracker) ParseMp3Glob(mp3Path string) (error, Tracks, TrackArtistAlbumMa
 			if track.Title == "" {
 				err = fmt.Errorf("Missing Title from file %s", basename)
 				debug.Error(err.Error())
-				return err, nil, nil
+				jobResultChannel <- JobResult{Error: err}
+				return
 			}
 			matches = nil
 		}
@@ -123,8 +204,8 @@ func (t Tracker) ParseMp3Glob(mp3Path string) (error, Tracks, TrackArtistAlbumMa
 		tracks = append(tracks, track)
 		trackMap.Add(&track)
 	}
-
-	return nil, tracks, trackMap
+	jobResultChannel <- JobResult{Error: nil, Tracks: tracks, TrackArtistAlbumMap: trackMap}
+	return
 }
 
 /*
@@ -181,11 +262,11 @@ func grepToTracks(matches []string) (Tracks, error) {
 var incrementedFileName = regexp.MustCompile(`(.*)\(\d+\)`)
 
 /*
-	Title Names to Filenames considerations
+Title Names to Filenames considerations
 
-	It appears ' " * are substituted for _ in track file names
+It appears ' " * are substituted for _ in track file names
 
-	We need to make some potential matches to search the meta file
+We need to make some potential matches to search the meta file
 */
 func cleanTrackMp3FileName(filename string) string {
 	return incrementedFileName.ReplaceAllString(filename, "$1")
