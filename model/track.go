@@ -34,6 +34,10 @@ type AlbumMap map[string]Songs
 */
 type TrackArtistAlbumMap map[string]AlbumMap
 
+/*
+Appears to be broken, need to find a reliable merge library, generics would be amazing
+for deepMerge
+*/
 func (m1 TrackArtistAlbumMap) Merge(m2 TrackArtistAlbumMap) TrackArtistAlbumMap {
 	merged := make(TrackArtistAlbumMap)
 	for k, v := range m1 {
@@ -51,6 +55,10 @@ func (m1 TrackArtistAlbumMap) Merge(m2 TrackArtistAlbumMap) TrackArtistAlbumMap 
 	return merged
 }
 
+/*
+Appears to be broken, need to find a reliable merge library, generics would be amazing
+for deepMerge
+*/
 func (m1 AlbumMap) Merge(m2 AlbumMap) AlbumMap {
 	merged := make(AlbumMap)
 	for k, v := range m1 {
