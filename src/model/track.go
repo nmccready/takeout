@@ -45,9 +45,9 @@ func (m1 TrackArtistAlbumMap) Merge(m2 TrackArtistAlbumMap) TrackArtistAlbumMap 
 	}
 
 	for key, value := range m2 {
-		album, hasValue := merged[key]
+		albums, hasValue := merged[key]
 		if hasValue {
-			album.Merge(value)
+			merged[key] = albums.Merge(value)
 			continue
 		}
 		merged[key] = value
@@ -68,11 +68,18 @@ func (m1 AlbumMap) Merge(m2 AlbumMap) AlbumMap {
 	for key, value := range m2 {
 		songs, hasValue := merged[key]
 		if hasValue {
-			merged[key] = append(songs, value...)
+			merged[key] = songs.Merge(value)
 			continue
 		}
 		merged[key] = value
 	}
+	return merged
+}
+
+func (s1 Songs) Merge(s2 Songs) Songs {
+	merged := make(Songs, len(s1)+len(s2))
+	copy(merged, s1)
+	copy(merged[len(s1):], s2)
 	return merged
 }
 
