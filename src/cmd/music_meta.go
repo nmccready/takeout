@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/nmccready/takeout/src/json"
 	"github.com/nmccready/takeout/src/model"
 	"github.com/spf13/cobra"
 )
@@ -37,7 +38,7 @@ var musicMeta = &cobra.Command{
 		tracks, trackMap := model.Tracker{}.ParseCsv(records)
 
 		if doTrackMap {
-			fmt.Println(model.StringifyPretty(trackMap))
+			fmt.Println(json.StringifyPretty(trackMap))
 		}
 
 		if analyze {

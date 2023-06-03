@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/nmccready/takeout/src/json"
 	"github.com/nmccready/takeout/src/model"
 	"github.com/spf13/cobra"
 )
@@ -27,7 +28,7 @@ var musicId3 = &cobra.Command{
 			return err
 		}
 
-		fmt.Println(model.StringifyPretty(track))
+		fmt.Println(json.StringifyPretty(track))
 		return nil
 	},
 }

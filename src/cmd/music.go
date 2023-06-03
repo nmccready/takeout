@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/nmccready/takeout/src/json"
 	"github.com/nmccready/takeout/src/model"
 	"github.com/spf13/cobra"
 )
@@ -36,7 +37,7 @@ var musicCmd = &cobra.Command{
 		}
 
 		if doTrackMap {
-			fmt.Println(model.StringifyPretty(trackMap))
+			fmt.Println(json.StringifyPretty(trackMap))
 		}
 
 		if analyze {
