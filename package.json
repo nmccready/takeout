@@ -2,7 +2,6 @@
   "name": "takeout",
   "version": "0.0.0",
   "description": "get your stuff out of google",
-  "main": "index.js",
   "scripts": {
     "lint": "golangci-lint run --fix",
     "test": "go test ./src/...",
