@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/nmccready/takeout/model"
+	"github.com/nmccready/takeout/src/model"
 	"github.com/spf13/cobra"
 )
 

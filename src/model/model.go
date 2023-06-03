@@ -3,7 +3,7 @@ package model
 import (
 	"encoding/json"
 
-	"github.com/nmccready/takeout/logger"
+	"github.com/nmccready/takeout/src/logger"
 )
 
 var debug = logger.Spawn("model")

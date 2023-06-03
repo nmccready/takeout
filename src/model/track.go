@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	_strings "github.com/nmccready/takeout/strings"
+	_strings "github.com/nmccready/takeout/src/strings"
 
 	id3 "github.com/dhowden/tag"
 )

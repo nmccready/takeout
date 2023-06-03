@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/nmccready/takeout/model"
+	"github.com/nmccready/takeout/src/model"
 	"github.com/spf13/cobra"
 )
 

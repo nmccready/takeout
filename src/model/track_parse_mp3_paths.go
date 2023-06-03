@@ -12,7 +12,7 @@ import (
 	"sync"
 
 	gDebug "github.com/nmccready/go-debug"
-	"github.com/nmccready/takeout/slice"
+	"github.com/nmccready/takeout/src/slice"
 )
 
 func (t Tracker) ParseMp3Glob(mp3Path string) (error, Tracks, TrackArtistAlbumMap) {
