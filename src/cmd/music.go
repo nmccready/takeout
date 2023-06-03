@@ -36,7 +36,7 @@ var musicCmd = &cobra.Command{
 		}
 
 		if doTrackMap {
-			fmt.Println(model.ToJSONPretty(trackMap))
+			fmt.Println(model.StringifyPretty(trackMap))
 		}
 
 		if analyze {

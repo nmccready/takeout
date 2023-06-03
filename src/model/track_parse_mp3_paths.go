@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	gDebug "github.com/nmccready/go-debug"
+	"github.com/nmccready/takeout/src/json"
 	"github.com/nmccready/takeout/src/slice"
 )
 
@@ -163,7 +164,7 @@ func processPathChunks(id int, job Job, jobResultChannel chan JobResult) {
 			// utilize csv to derive the info via grep / regex
 
 			matches = metaReg.TrackRegex.FindAllStringSubmatch(csv, -1)
-			debug.Log("matches: %s", ToJSON(matches))
+			debug.Log("matches: %s", json.Stringify(matches))
 			if len(matches) == 0 {
 				debug.Error("Cannot Resolve Metadata!")
 				jobResultChannel <- JobResult{Error: err}
@@ -200,7 +201,7 @@ func processPathChunks(id int, job Job, jobResultChannel chan JobResult) {
 			}
 			matches = nil
 		}
-		debug.Log("track: %s", ToJSON(track))
+		debug.Log("track: %s", json.Stringify(track))
 		tracks = append(tracks, track)
 		trackMap.Add(&track)
 	}

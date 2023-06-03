@@ -37,7 +37,7 @@ var musicMeta = &cobra.Command{
 		tracks, trackMap := model.Tracker{}.ParseCsv(records)
 
 		if doTrackMap {
-			fmt.Println(model.ToJSONPretty(trackMap))
+			fmt.Println(model.StringifyPretty(trackMap))
 		}
 
 		if analyze {

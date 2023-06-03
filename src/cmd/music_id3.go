@@ -27,7 +27,7 @@ var musicId3 = &cobra.Command{
 			return err
 		}
 
-		fmt.Println(model.ToJSONPretty(track))
+		fmt.Println(model.StringifyPretty(track))
 		return nil
 	},
 }

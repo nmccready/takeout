@@ -3,6 +3,7 @@ package model
 import (
 	"testing"
 
+	"github.com/nmccready/takeout/src/json"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -59,8 +60,9 @@ func TestMergeAlbum(t *testing.T) {
 		},
 	}
 
-	merged = map1.Merge(map3)
-	assert.Equal(t, TrackArtistAlbumMap{
+	merged = merged.Merge(map3)
+	debug.Spawn("test").Spawn("actual").Log(json.StringifyPretty(merged))
+	expected := TrackArtistAlbumMap{
 		"Tool": {
 			"Fear Innoculumn": []string{
 				"Tempest",
@@ -80,5 +82,7 @@ func TestMergeAlbum(t *testing.T) {
 				"Closer",
 			},
 		},
-	}, merged, "basic merge one nested album's per band")
+	}
+	debug.Spawn("test").Spawn("expected").Log(json.StringifyPretty(expected))
+	assert.Equal(t, expected, merged, "basic merge one nested album's per band")
 }

@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/nmccready/takeout/src/json"
 	_strings "github.com/nmccready/takeout/src/strings"
 
 	id3 "github.com/dhowden/tag"
@@ -84,7 +85,7 @@ func (s1 Songs) Merge(s2 Songs) Songs {
 }
 
 func toTrack(row []string, origFilename string) Track {
-	debug.Log("row: %s", ToJSON(row))
+	debug.Log("row: %s", json.Stringify(row))
 	track := Track{}
 	track.Title = row[0]
 	track.Album = row[1]

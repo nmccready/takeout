@@ -2,3 +2,7 @@ vendor
 .vscode
 .DS_STORE
 go.sum
+tmp
+node_modules
+dist
+bin
