@@ -10,10 +10,12 @@ import (
 
 var analyze bool
 var doTrackMap bool
+var doTrackMapSimple bool
 
 func init() {
 	musicCmd.Flags().BoolVarP(&analyze, "analyze", "a", false, "print tracks analysis")
-	musicCmd.Flags().BoolVarP(&doTrackMap, "trackMap", "t", false, "print trackMap")
+	musicCmd.Flags().BoolVarP(&doTrackMap, "trackMap", "t", false, "print trackMap detailed")
+	musicCmd.Flags().BoolVarP(&doTrackMapSimple, "trackMapSimple", "s", false, "print trackMap simple print")
 
 	rootCmd.AddCommand(musicCmd)
 }
@@ -37,7 +39,13 @@ var musicCmd = &cobra.Command{
 		}
 
 		if doTrackMap {
+			// simpler print for AlbumSongsMap
 			fmt.Println(json.StringifyPretty(trackMap))
+		}
+
+		if doTrackMapSimple {
+			// simpler print for AlbumSongsMap
+			fmt.Println(json.StringifyPretty(trackMap.ToAlbumSongsMap()))
 		}
 
 		if analyze {

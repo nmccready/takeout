@@ -24,7 +24,8 @@ type Track struct {
 
 type Tracks []Track
 type Songs []string
-type AlbumMap map[string]Songs
+type AlbumMap map[string]Tracks
+type AlbumSongsMap map[string]Songs
 
 /*
 	"Tool": {
@@ -67,9 +68,9 @@ func (m1 AlbumMap) Merge(m2 AlbumMap) AlbumMap {
 	}
 
 	for key, value := range m2 {
-		songs, hasValue := merged[key]
+		tracks, hasValue := merged[key]
 		if hasValue {
-			merged[key] = songs.Merge(value)
+			merged[key] = tracks.Merge(value)
 			continue
 		}
 		merged[key] = value
@@ -77,11 +78,12 @@ func (m1 AlbumMap) Merge(m2 AlbumMap) AlbumMap {
 	return merged
 }
 
-func (s1 Songs) Merge(s2 Songs) Songs {
-	merged := make(Songs, len(s1)+len(s2))
-	copy(merged, s1)
-	copy(merged[len(s1):], s2)
-	return merged
+// merge tracks array together
+func (t1 Tracks) Merge(t2 Tracks) Tracks {
+	tracks := Tracks{}
+	tracks = append(tracks, t1...)
+	tracks = append(tracks, t2...)
+	return tracks
 }
 
 func toTrack(row []string, origFilename string) Track {
@@ -110,14 +112,14 @@ func (t Tracker) ParseCsv(csv [][]string) (Tracks, TrackArtistAlbumMap) {
 		track := toTrack(row, "")
 		tracks = append(tracks, track)
 		if trackMap[track.Artist] == nil {
-			trackMap[track.Artist] = AlbumMap{track.Album: {track.Title}}
+			trackMap[track.Artist] = AlbumMap{track.Album: {track}}
 			continue
 		}
 		if trackMap[track.Artist][track.Album] == nil {
-			trackMap[track.Artist][track.Album] = Songs{track.Title}
+			trackMap[track.Artist][track.Album] = Tracks{track}
 			continue
 		}
-		trackMap[track.Artist][track.Album] = append(trackMap[track.Artist][track.Album], track.Title)
+		trackMap[track.Artist][track.Album] = append(trackMap[track.Artist][track.Album], track)
 	}
 	return tracks, trackMap
 }
@@ -168,18 +170,26 @@ func (t Track) GetArtistKey() string {
 func (trackMap TrackArtistAlbumMap) Add(track *Track) {
 	artist := track.GetArtistKey()
 	if trackMap[artist] == nil {
-		trackMap[artist] = AlbumMap{track.Album: {track.Title}}
+		trackMap[artist] = AlbumMap{track.Album: {*track}}
 		return
 	}
 	if trackMap[artist][track.Album] == nil {
-		trackMap[artist][track.Album] = Songs{track.Title}
+		trackMap[artist][track.Album] = Tracks{*track}
 		return
 	}
-	trackMap[artist][track.Album] = append(trackMap[artist][track.Album], track.Title)
+	trackMap[artist][track.Album] = append(trackMap[artist][track.Album], *track)
 }
 
 func (tracks Tracks) Analysis() string {
 	return fmt.Sprintf("%d songs", len(tracks))
+}
+
+func (tracks Tracks) ToSongs() Songs {
+	songs := Songs{}
+	for _, track := range tracks {
+		songs = append(songs, track.Title)
+	}
+	return songs
 }
 
 func (tMap TrackArtistAlbumMap) Analysis() string {
@@ -189,6 +199,16 @@ func (tMap TrackArtistAlbumMap) Analysis() string {
 		albums += len(aMap)
 	}
 	return fmt.Sprintf("%d artists, %d albums", artists, albums)
+}
+
+func (tMap TrackArtistAlbumMap) ToAlbumSongsMap() AlbumSongsMap {
+	albumSongsMap := AlbumSongsMap{}
+	for _, albumMap := range tMap {
+		for album, tracks := range albumMap {
+			albumSongsMap[album] = append(albumSongsMap[album], tracks.ToSongs()...)
+		}
+	}
+	return albumSongsMap
 }
 
 func (track Track) ToMetaRow() string {

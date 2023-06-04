@@ -18,6 +18,7 @@ func init() {
 	musicCmd.AddCommand(musicId3)
 }
 
+// nolint
 var musicMeta = &cobra.Command{
 	Use:   "meta",
 	Short: "read the meta file to compare to id3",

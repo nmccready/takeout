@@ -11,21 +11,33 @@ func TestMergeAlbum(t *testing.T) {
 	// assert for nil (good for errors)
 	map1 := TrackArtistAlbumMap{
 		"Tool": {
-			"Fear Innoculumn": []string{
-				"Tempest",
-				"Invincible",
+			"Fear Innoculumn": Tracks{
+				Track{
+					Title:        "Tempest",
+					OrigFilename: "Tempest.mp3",
+				},
+				Track{
+					Title:        "Invincible",
+					OrigFilename: "Invincible.mp3",
+				},
 			},
 		},
 	}
 	map2 := TrackArtistAlbumMap{
 		"Tool": {
-			"Fear Innoculumn": []string{
-				"Pneuma",
+			"Fear Innoculumn": Tracks{
+				Track{
+					Title:        "Pneuma",
+					OrigFilename: "Pneuma.mp3",
+				},
 			},
 		},
 		"Nine Inch Nails": {
-			"Pretty Hate Machine": []string{
-				"Head Like A Hole",
+			"Pretty Hate Machine": Tracks{
+				Track{
+					Title:        "Head Like A Hole",
+					OrigFilename: "Head Like A Hole.mp3",
+				},
 			},
 		},
 	}
@@ -33,29 +45,50 @@ func TestMergeAlbum(t *testing.T) {
 	merged := map1.Merge(map2)
 	assert.Equal(t, TrackArtistAlbumMap{
 		"Tool": {
-			"Fear Innoculumn": []string{
-				"Tempest",
-				"Invincible",
-				"Pneuma",
+			"Fear Innoculumn": Tracks{
+				Track{
+					Title:        "Tempest",
+					OrigFilename: "Tempest.mp3",
+				},
+				Track{
+					Title:        "Invincible",
+					OrigFilename: "Invincible.mp3",
+				},
+				Track{
+					Title:        "Pneuma",
+					OrigFilename: "Pneuma.mp3",
+				},
 			},
 		},
 		"Nine Inch Nails": {
-			"Pretty Hate Machine": []string{
-				"Head Like A Hole",
+			"Pretty Hate Machine": Tracks{
+				Track{
+					Title:        "Head Like A Hole",
+					OrigFilename: "Head Like A Hole.mp3",
+				},
 			},
 		},
 	}, merged, "basic merge one albumns per band")
 
 	map3 := TrackArtistAlbumMap{
 		"Tool": {
-			"Laterlus": []string{
-				"Schism",
+			"Laterlus": Tracks{
+				Track{
+					Title:        "Schism",
+					OrigFilename: "Schism.mp3",
+				},
 			},
 		},
 		"Nine Inch Nails": {
-			"The Downward Spiral": []string{
-				"March Of The Pigs",
-				"Closer",
+			"The Downward Spiral": Tracks{
+				Track{
+					Title:        "March Of The Pigs",
+					OrigFilename: "March Of The Pigs.mp3",
+				},
+				Track{
+					Title:        "Closer",
+					OrigFilename: "Closer.mp3",
+				},
 			},
 		},
 	}
@@ -64,22 +97,43 @@ func TestMergeAlbum(t *testing.T) {
 	debug.Spawn("test").Spawn("actual").Log(json.StringifyPretty(merged))
 	expected := TrackArtistAlbumMap{
 		"Tool": {
-			"Fear Innoculumn": []string{
-				"Tempest",
-				"Invincible",
-				"Pneuma",
+			"Fear Innoculumn": Tracks{
+				Track{
+					Title:        "Tempest",
+					OrigFilename: "Tempest.mp3",
+				},
+				Track{
+					Title:        "Invincible",
+					OrigFilename: "Invincible.mp3",
+				},
+				Track{
+					Title:        "Pneuma",
+					OrigFilename: "Pneuma.mp3",
+				},
 			},
-			"Laterlus": []string{
-				"Schism",
+			"Laterlus": Tracks{
+				Track{
+					Title:        "Schism",
+					OrigFilename: "Schism.mp3",
+				},
 			},
 		},
 		"Nine Inch Nails": {
-			"Pretty Hate Machine": []string{
-				"Head Like A Hole",
+			"Pretty Hate Machine": Tracks{
+				Track{
+					Title:        "Head Like A Hole",
+					OrigFilename: "Head Like A Hole.mp3",
+				},
 			},
-			"The Downward Spiral": []string{
-				"March Of The Pigs",
-				"Closer",
+			"The Downward Spiral": Tracks{
+				Track{
+					Title:        "March Of The Pigs",
+					OrigFilename: "March Of The Pigs.mp3",
+				},
+				Track{
+					Title:        "Closer",
+					OrigFilename: "Closer.mp3",
+				},
 			},
 		},
 	}
