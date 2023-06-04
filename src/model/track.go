@@ -5,10 +5,9 @@ import (
 	"os"
 	"strings"
 
+	id3 "github.com/dhowden/tag"
 	"github.com/nmccready/takeout/src/json"
 	_strings "github.com/nmccready/takeout/src/strings"
-
-	id3 "github.com/dhowden/tag"
 )
 
 type Tracker struct{}
@@ -24,24 +23,13 @@ type Track struct {
 
 type Tracks []Track
 type Songs []string
-type AlbumMap map[string]Tracks
-type AlbumSongsMap map[string]Songs
-
-/*
-	"Tool": {
-		"Fear Innoculumn": [
-			"Tempest.mp3"
-		]
-	}
-*/
-type TrackArtistAlbumMap map[string]AlbumMap
 
 /*
 Appears to be broken, need to find a reliable merge library, generics would be amazing
 for deepMerge
 */
-func (m1 TrackArtistAlbumMap) Merge(m2 TrackArtistAlbumMap) TrackArtistAlbumMap {
-	merged := make(TrackArtistAlbumMap)
+func (m1 ArtistAlbumMap) Merge(m2 ArtistAlbumMap) ArtistAlbumMap {
+	merged := make(ArtistAlbumMap)
 	for k, v := range m1 {
 		merged[k] = v
 	}
@@ -50,27 +38,6 @@ func (m1 TrackArtistAlbumMap) Merge(m2 TrackArtistAlbumMap) TrackArtistAlbumMap 
 		albums, hasValue := merged[key]
 		if hasValue {
 			merged[key] = albums.Merge(value)
-			continue
-		}
-		merged[key] = value
-	}
-	return merged
-}
-
-/*
-Appears to be broken, need to find a reliable merge library, generics would be amazing
-for deepMerge
-*/
-func (m1 AlbumMap) Merge(m2 AlbumMap) AlbumMap {
-	merged := make(AlbumMap)
-	for k, v := range m1 {
-		merged[k] = v
-	}
-
-	for key, value := range m2 {
-		tracks, hasValue := merged[key]
-		if hasValue {
-			merged[key] = tracks.Merge(value)
 			continue
 		}
 		merged[key] = value
@@ -102,9 +69,9 @@ func toTrack(row []string, origFilename string) Track {
 }
 
 // note Empty String for Album or Artist is Unknown
-func (t Tracker) ParseCsv(csv [][]string) (Tracks, TrackArtistAlbumMap) {
+func (t Tracker) ParseCsv(csv [][]string) (Tracks, ArtistAlbumMap) {
 	tracks := Tracks{}
-	trackMap := TrackArtistAlbumMap{}
+	trackMap := ArtistAlbumMap{}
 	for ri, row := range csv {
 		if ri == 0 {
 			continue // skip header
@@ -166,20 +133,6 @@ func (t Track) GetArtistKey() string {
 	return artist
 }
 
-// warn about empty Artists??
-func (trackMap TrackArtistAlbumMap) Add(track *Track) {
-	artist := track.GetArtistKey()
-	if trackMap[artist] == nil {
-		trackMap[artist] = AlbumMap{track.Album: {*track}}
-		return
-	}
-	if trackMap[artist][track.Album] == nil {
-		trackMap[artist][track.Album] = Tracks{*track}
-		return
-	}
-	trackMap[artist][track.Album] = append(trackMap[artist][track.Album], *track)
-}
-
 func (tracks Tracks) Analysis() string {
 	return fmt.Sprintf("%d songs", len(tracks))
 }
@@ -190,25 +143,6 @@ func (tracks Tracks) ToSongs() Songs {
 		songs = append(songs, track.Title)
 	}
 	return songs
-}
-
-func (tMap TrackArtistAlbumMap) Analysis() string {
-	artists := len(tMap)
-	albums := 0
-	for _, aMap := range tMap {
-		albums += len(aMap)
-	}
-	return fmt.Sprintf("%d artists, %d albums", artists, albums)
-}
-
-func (tMap TrackArtistAlbumMap) ToAlbumSongsMap() AlbumSongsMap {
-	albumSongsMap := AlbumSongsMap{}
-	for _, albumMap := range tMap {
-		for album, tracks := range albumMap {
-			albumSongsMap[album] = append(albumSongsMap[album], tracks.ToSongs()...)
-		}
-	}
-	return albumSongsMap
 }
 
 func (track Track) ToMetaRow() string {

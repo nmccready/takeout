@@ -16,7 +16,7 @@ import (
 	"github.com/nmccready/takeout/src/slice"
 )
 
-func (t Tracker) ParseMp3Glob(mp3Path string) (error, Tracks, TrackArtistAlbumMap) {
+func (t Tracker) ParseMp3Glob(mp3Path string) (error, Tracks, ArtistAlbumMap) {
 
 	paths, err := filepath.Glob(mp3Path + "/" + "*.mp3")
 	if err != nil {
@@ -64,10 +64,10 @@ func (t Tracker) ParseMp3Glob(mp3Path string) (error, Tracks, TrackArtistAlbumMa
 	}
 
 	// merge together all Job Chunks / Maps etc.
-	albumMap := TrackArtistAlbumMap{}
+	albumMap := ArtistAlbumMap{}
 	tracks := Tracks{}
 	for _, result := range jobResults {
-		albumMap = albumMap.Merge(result.TrackArtistAlbumMap)
+		albumMap = albumMap.Merge(result.ArtistAlbumMap)
 		tracks = append(result.Tracks, tracks...)
 	}
 	return nil, tracks, albumMap
@@ -93,7 +93,7 @@ type Job struct {
 type JobResult struct {
 	Error error
 	Tracks
-	TrackArtistAlbumMap
+	ArtistAlbumMap
 }
 
 func worker(id int, wg *sync.WaitGroup, jobChannel chan Job, jobResultChannel chan JobResult) {
@@ -112,7 +112,7 @@ map:
 func processPathChunks(id int, job Job, jobResultChannel chan JobResult) {
 	removedCsv := ""
 	tracks := Tracks{}
-	trackMap := TrackArtistAlbumMap{}
+	trackMap := ArtistAlbumMap{}
 	csv := job.Csv
 
 	for _, path := range job.Paths {
@@ -205,7 +205,7 @@ func processPathChunks(id int, job Job, jobResultChannel chan JobResult) {
 		tracks = append(tracks, track)
 		trackMap.Add(&track)
 	}
-	jobResultChannel <- JobResult{Error: nil, Tracks: tracks, TrackArtistAlbumMap: trackMap}
+	jobResultChannel <- JobResult{Error: nil, Tracks: tracks, ArtistAlbumMap: trackMap}
 }
 
 /*

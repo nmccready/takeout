@@ -9,7 +9,7 @@ import (
 
 func TestMergeAlbum(t *testing.T) {
 	// assert for nil (good for errors)
-	map1 := TrackArtistAlbumMap{
+	map1 := ArtistAlbumMap{
 		"Tool": {
 			"Fear Innoculumn": Tracks{
 				Track{
@@ -23,7 +23,7 @@ func TestMergeAlbum(t *testing.T) {
 			},
 		},
 	}
-	map2 := TrackArtistAlbumMap{
+	map2 := ArtistAlbumMap{
 		"Tool": {
 			"Fear Innoculumn": Tracks{
 				Track{
@@ -43,7 +43,7 @@ func TestMergeAlbum(t *testing.T) {
 	}
 
 	merged := map1.Merge(map2)
-	assert.Equal(t, TrackArtistAlbumMap{
+	assert.Equal(t, ArtistAlbumMap{
 		"Tool": {
 			"Fear Innoculumn": Tracks{
 				Track{
@@ -70,7 +70,7 @@ func TestMergeAlbum(t *testing.T) {
 		},
 	}, merged, "basic merge one albumns per band")
 
-	map3 := TrackArtistAlbumMap{
+	map3 := ArtistAlbumMap{
 		"Tool": {
 			"Laterlus": Tracks{
 				Track{
@@ -95,7 +95,7 @@ func TestMergeAlbum(t *testing.T) {
 
 	merged = merged.Merge(map3)
 	debug.Spawn("test").Spawn("actual").Log(json.StringifyPretty(merged))
-	expected := TrackArtistAlbumMap{
+	expected := ArtistAlbumMap{
 		"Tool": {
 			"Fear Innoculumn": Tracks{
 				Track{
