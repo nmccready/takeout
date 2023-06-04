@@ -206,7 +206,6 @@ func processPathChunks(id int, job Job, jobResultChannel chan JobResult) {
 		trackMap.Add(&track)
 	}
 	jobResultChannel <- JobResult{Error: nil, Tracks: tracks, TrackArtistAlbumMap: trackMap}
-	return
 }
 
 /*
