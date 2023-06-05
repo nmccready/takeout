@@ -32,3 +32,9 @@ func Copy(src, dest string) error {
 	}
 	return destFile.Sync()
 }
+
+func ExitOnError(err error) {
+	if err != nil {
+		panic(err)
+	}
+}

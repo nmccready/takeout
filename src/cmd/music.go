@@ -5,17 +5,20 @@ import (
 
 	"github.com/nmccready/takeout/src/json"
 	"github.com/nmccready/takeout/src/model"
+	"github.com/nmccready/takeout/src/os"
 	"github.com/spf13/cobra"
 )
 
 var analyze bool
 var doTrackMap bool
 var doTrackMapSimple bool
+var dest string
 
 func init() {
 	musicCmd.Flags().BoolVarP(&analyze, "analyze", "a", false, "print tracks analysis")
 	musicCmd.Flags().BoolVarP(&doTrackMap, "trackMap", "t", false, "print trackMap detailed")
-	musicCmd.Flags().BoolVarP(&doTrackMapSimple, "trackMapSimple", "s", false, "print trackMap simple print")
+	musicCmd.Flags().BoolVarP(&doTrackMapSimple, "trackMapSimple", "b", false, "print trackMap simple print")
+	musicCmd.Flags().StringVarP(&dest, "save", "s", "", "absolute path of where to save tracks")
 
 	rootCmd.AddCommand(musicCmd)
 }
@@ -46,6 +49,10 @@ var musicCmd = &cobra.Command{
 		if doTrackMapSimple {
 			// simpler print for AlbumSongsMap
 			fmt.Println(json.StringifyPretty(trackMap.ToAlbumSongsMap()))
+		}
+
+		if dest != "" {
+			os.ExitOnError(trackMap.Save(mp3Path, dest))
 		}
 
 		if analyze {

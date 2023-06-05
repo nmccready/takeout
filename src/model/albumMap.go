@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/nmccready/takeout/src/async"
 	"github.com/nmccready/takeout/src/json"
@@ -108,6 +109,12 @@ func (tMap ArtistAlbumMap) SaveChunk(src, dest string) error {
 func (tMap ArtistAlbumMap) Save(src, dest string) error {
 	var jobResults []SaveJobResult
 	var err error
+
+	// force make sure dest directory exists
+	err = os.MkdirAll(dest, os.ModePerm)
+	if err != nil {
+		return err
+	}
 
 	err, jobResults = async.ProcessAsyncJobsByCpuNum[SaveJob, SaveJobResult](
 		func(chunks int) []SaveJob {
