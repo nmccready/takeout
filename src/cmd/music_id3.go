@@ -22,7 +22,7 @@ var musicId3 = &cobra.Command{
 			panic("filepath and file name of music meta is required")
 		}
 
-		err, track := model.Track{}.ParseId3(mp3)
+		err, track, _ := model.ParseId3ToTrack(mp3)
 
 		if err != nil {
 			return err

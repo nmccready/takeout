@@ -36,7 +36,7 @@ var musicMeta = &cobra.Command{
 		reader := csv.NewReader(file)
 		records, _ := reader.ReadAll()
 
-		tracks, trackMap := model.Tracker{}.ParseCsv(records)
+		tracks, trackMap := model.ParseCsvToTracks(records)
 
 		if doTrackMap {
 			fmt.Println(json.StringifyPretty(trackMap))

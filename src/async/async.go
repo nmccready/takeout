@@ -7,7 +7,8 @@ import (
 	"github.com/nmccready/takeout/src/logger"
 )
 
-var debug = logger.Spawn("model")
+// nolint
+var debug = logger.Spawn("async")
 
 type IJobResult interface {
 	Error() error

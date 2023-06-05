@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"os"
+	"path"
 	"strings"
 
 	id3 "github.com/dhowden/tag"
@@ -24,6 +25,8 @@ type Track struct {
 
 type Tracks []Track
 type Songs []string
+
+var debugTrack = debug.Spawn("track")
 
 /*
 Appears to be broken, need to find a reliable merge library, generics would be amazing
@@ -54,8 +57,8 @@ func (t1 Tracks) Merge(t2 Tracks) Tracks {
 	return tracks
 }
 
-func toTrack(row []string, origFilename string) Track {
-	debug.Log("row: %s", json.Stringify(row))
+func ToTrack(row []string, originalFilename string) Track {
+	debugTrack.Log("row: %s", json.Stringify(row))
 	track := Track{}
 	track.Title = row[0]
 	track.Album = row[1]
@@ -66,18 +69,30 @@ func toTrack(row []string, origFilename string) Track {
 		track.SupportArtists = artists[1 : len(artists)-1]
 	}
 	track.DurationSec = row[3]
+	track.OrigFilename = originalFilename
 	return track
 }
 
+type OrigFilenameMap map[string]int // TrackName Map counter
+
 // note Empty String for Album or Artist is Unknown
-func (t Tracker) ParseCsv(csv [][]string) (Tracks, ArtistAlbumMap) {
+func ParseCsvToTracks(csv [][]string) (Tracks, ArtistAlbumMap) {
+	trackNameCounter := OrigFilenameMap{}
 	tracks := Tracks{}
 	trackMap := ArtistAlbumMap{}
 	for ri, row := range csv {
 		if ri == 0 {
 			continue // skip header
 		}
-		track := toTrack(row, "")
+		track := ToTrack(row, "") // need to figure out filename
+		ctr, hasValue := trackNameCounter[track.Title]
+		if !hasValue {
+			track.OrigFilename = track.Title + ".mp3"
+			trackNameCounter[track.Title] = 1
+		} else {
+			track.OrigFilename = fmt.Sprintf("%s(%d).mp3", track.Title, ctr)
+			trackNameCounter[track.Title] = ctr + 1
+		}
 		tracks = append(tracks, track)
 		if trackMap[track.Artist] == nil {
 			trackMap[track.Artist] = AlbumMap{track.Album: {track}}
@@ -100,19 +115,22 @@ Also tried:
 "github.com/bogem/id3v2/v2" kinda works
 "github.com/xonyagar/id3" v23 failures not much info but bad frames
 */
-func (t Track) ParseId3(mp3FileName string) (error, Track) {
+func ParseId3ToTrack(mp3Path string) (error, Track, string) {
 	// tag, err := id3v2.Open(mp3FileName, id3v2.Options{Parse: true})
-	file, err := os.OpenFile(mp3FileName, os.O_RDONLY, 0666)
+	origFilename := path.Base(mp3Path)
+	file, err := os.OpenFile(mp3Path, os.O_RDONLY, 0666)
 	if err != nil {
-		debug.Error("failed to open file")
-		return err, Track{}
+		debugTrack.Error("failed to open file")
+		return err, Track{}, origFilename
 	}
 	// tag, err := id3.New(file)
 	tag, err := id3.ReadFrom(file)
 	if err != nil {
-		return err, Track{}
+		return err, Track{}, origFilename
 	}
 	defer file.Close()
+
+	t := Track{}
 	// defer tag.Close()
 	// artists := tag.Artists()
 	// t.Artist = artists[0]
@@ -120,10 +138,11 @@ func (t Track) ParseId3(mp3FileName string) (error, Track) {
 	t.Artist = tag.AlbumArtist()
 	t.Album = tag.Album()
 	t.Title = tag.Title()
+	t.OrigFilename = origFilename
 	// if len(artists) > 1 {
 	// 	t.SupportArtists = artists[1 : len(artists)-1]
 	// }
-	return nil, t
+	return nil, t, origFilename
 }
 
 func (t Track) GetArtistKey() string {
@@ -158,11 +177,19 @@ type SaveOpts struct {
 	DoCopy bool
 }
 
+var dbgTrackSave = debugTrack.Spawn("Save")
+
 func (track Track) Save(opts SaveOpts) error {
 	// save to file system
-	dest := fmt.Sprintf("%s/%s/%s/%s", opts.Dest, opts.Artist, opts.Album, track.OrigFilename)
+	destDir := fmt.Sprintf("%s/%s/%s", opts.Dest, opts.Artist, opts.Album)
+	err := os.MkdirAll(destDir, os.ModePerm)
+	if err != nil {
+		return err
+	}
 	src := fmt.Sprintf("%s/%s", opts.Src, track.OrigFilename)
-	debug.Log("src: %s, dest: %s", src, dest)
+	dest := fmt.Sprintf("%s/%s", destDir, track.OrigFilename)
+	dbgTrackSave.Log("src: %s, dest: %s", src, dest)
+
 	if opts.DoCopy {
 		return _os.Copy(src, dest)
 	}

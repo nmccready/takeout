@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	_debug "github.com/nmccready/go-debug"
 	"github.com/nmccready/takeout/src/async"
 	"github.com/nmccready/takeout/src/json"
 	"github.com/nmccready/takeout/src/mapper"
@@ -109,6 +110,8 @@ func (tMap ArtistAlbumMap) SaveChunk(src, dest string) error {
 func (tMap ArtistAlbumMap) Save(src, dest string) error {
 	var jobResults []SaveJobResult
 	var err error
+	dbg := debug.Spawn("Save")
+	dbg.Log("in")
 
 	// force make sure dest directory exists
 	err = os.MkdirAll(dest, os.ModePerm)
@@ -118,27 +121,42 @@ func (tMap ArtistAlbumMap) Save(src, dest string) error {
 
 	err, jobResults = async.ProcessAsyncJobsByCpuNum[SaveJob, SaveJobResult](
 		func(chunks int) []SaveJob {
-			return artistAlbumMapToSaveJobs(tMap, chunks)
+			dbg.Log("chunks: %d", chunks)
+			jobs := artistAlbumMapToSaveJobs(tMap, chunks)
+			dbg.Spawn("jobs").Log(func() string { return json.StringifyPretty(jobs) })
+			return jobs
 		},
 		func(id int, job SaveJob, jobResultChannel chan SaveJobResult) {
 			// save all tracks in the chunk
-			_err := job.MapChunk.Save(src, dest)
+			d := dbg.Spawn("job").Spawn("Save")
+			d.Log(func() _debug.Fields {
+				return _debug.Fields{
+					"id":  id,
+					"job": job,
+				}
+			})
+			_err := job.MapChunk.SaveChunk(src, dest)
+			if _err != nil {
+				d.Error("%w", _err)
+			}
 			jobResultChannel <- SaveJobResult{Err: _err, ID: id}
 		})
 
 	if err != nil {
 		return err
 	}
-	debug.Log("SaveJobResults: %v", json.StringifyPretty(jobResults))
+	dbg.Log("SaveJobResults: %v", json.StringifyPretty(jobResults))
 	return nil
 }
 
 func artistAlbumMapToSaveJobs(tMap ArtistAlbumMap, chunks int) []SaveJob {
+	dbg := debug.Spawn("artistAlbumMapToSaveJobs")
 	artistChunks := mapper.ChunkBy[AlbumMap](tMap, chunks)
 	var jobs []SaveJob
-
+	dbg.Log("artistChunks: %v", json.StringifyPretty(artistChunks))
 	for _, artistChunk := range artistChunks {
 		jobs = append(jobs, SaveJob{MapChunk: artistChunk})
 	}
+	dbg.Log("job len: %d", len(jobs))
 	return jobs
 }

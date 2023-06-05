@@ -1,9 +1,13 @@
 package model
 
 import (
+	"os"
+	"path"
+	"runtime"
 	"testing"
 
 	"github.com/nmccready/takeout/src/json"
+	_path "github.com/nmccready/takeout/src/path"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -139,4 +143,40 @@ func TestMergeAlbum(t *testing.T) {
 	}
 	debug.Spawn("test").Spawn("expected").Log(json.StringifyPretty(expected))
 	assert.Equal(t, expected, merged, "basic merge one nested album's per band")
+}
+
+func TestTrackSave(t *testing.T) {
+	// assert for nil (good for errors)
+	track := Track{
+		Title:        "Tempest",
+		OrigFilename: "Tempest.mp3",
+	}
+	// "Tool": {
+	// 	"Fear Innoculumn"
+	// }
+	// get fixture/takeout_dump directory path
+	__dirname := _path.DirnameForce(_path.FilenameForce(runtime.Caller(0)))
+	src := path.Join(__dirname, "fixtures", "takeout_dump")
+	dest := path.Join(__dirname, "fixtures", "organized")
+	track.Save(SaveOpts{
+		Artist: "Tool",
+		Album:  "Fear Innoculumn",
+		Src:    src,
+		Dest:   dest,
+		DoCopy: true,
+	})
+
+	// assert song files in src, and dest are identical
+
+	srcBytes, err := os.ReadFile(path.Join(src, "Tempest.mp3"))
+	if err != nil {
+		t.Errorf("Src Could not read file %v", err)
+	}
+
+	destBytes, err := os.ReadFile(path.Join(dest, "Tool", "Fear Innoculumn", "Tempest.mp3"))
+	if err != nil {
+		t.Errorf("Dest Could not read file %v", err)
+	}
+
+	assert.Equal(t, srcBytes, destBytes, "src and dest bytes are identical")
 }
