@@ -7,6 +7,7 @@ import (
 
 	id3 "github.com/dhowden/tag"
 	"github.com/nmccready/takeout/src/json"
+	_os "github.com/nmccready/takeout/src/os"
 	_strings "github.com/nmccready/takeout/src/strings"
 )
 
@@ -147,4 +148,23 @@ func (tracks Tracks) ToSongs() Songs {
 
 func (track Track) ToMetaRow() string {
 	return fmt.Sprintf("%s,%s,%s", track.Title, track.Album, track.Artist)
+}
+
+type SaveOpts struct {
+	Src    string
+	Dest   string
+	Artist string
+	Album  string
+	DoCopy bool
+}
+
+func (track Track) Save(opts SaveOpts) error {
+	// save to file system
+	dest := fmt.Sprintf("%s/%s/%s/%s", opts.Dest, opts.Artist, opts.Album, track.OrigFilename)
+	src := fmt.Sprintf("%s/%s", opts.Src, track.OrigFilename)
+	debug.Log("src: %s, dest: %s", src, dest)
+	if opts.DoCopy {
+		return _os.Copy(src, dest)
+	}
+	return os.Rename(src, dest)
 }

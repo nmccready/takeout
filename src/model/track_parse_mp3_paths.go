@@ -7,14 +7,28 @@ import (
 	osPath "path"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
-	"sync"
 
 	gDebug "github.com/nmccready/go-debug"
+	"github.com/nmccready/takeout/src/async"
 	"github.com/nmccready/takeout/src/json"
 	"github.com/nmccready/takeout/src/slice"
 )
+
+type Job struct {
+	Csv   string
+	Paths []string
+}
+
+type JobResult struct {
+	Err error
+	Tracks
+	ArtistAlbumMap
+}
+
+func (j JobResult) Error() error {
+	return j.Err
+}
 
 func (t Tracker) ParseMp3Glob(mp3Path string) (error, Tracks, ArtistAlbumMap) {
 
@@ -35,32 +49,19 @@ func (t Tracker) ParseMp3Glob(mp3Path string) (error, Tracks, ArtistAlbumMap) {
 		return err, nil, nil
 	}
 
-	cpuNum := runtime.NumCPU()
-	runtime.GOMAXPROCS(cpuNum)
-	debug.Log("cpuNum: %d", cpuNum)
-	var wg sync.WaitGroup
-	wg.Add(cpuNum)
-	jobChannel := make(chan Job)
-
-	jobs := pathsToJobs(bytes, paths, cpuNum)
-	jobResultChannel := make(chan JobResult, len(jobs))
-
-	for i := 0; i < cpuNum; i++ {
-		go worker(i, &wg, jobChannel, jobResultChannel)
-	}
-
-	// Send jobs to worker
-	for _, job := range jobs {
-		jobChannel <- job
-	}
-	close(jobChannel)
-	wg.Wait()
-	close(jobResultChannel)
-
 	var jobResults []JobResult
-	// Receive job results from workers
-	for result := range jobResultChannel {
-		jobResults = append(jobResults, result)
+
+	err, jobResults = async.ProcessAsyncJobsByCpuNum[Job, JobResult](
+		func(chunks int) []Job {
+			return pathsToJobs(bytes, paths, chunks)
+		},
+		func(id int, job Job, jobResultChannel chan JobResult) {
+			processPathChunks(id, job, jobResultChannel)
+		},
+	)
+
+	if err != nil {
+		return err, nil, nil
 	}
 
 	// merge together all Job Chunks / Maps etc.
@@ -83,24 +84,6 @@ func pathsToJobs(csv []byte, paths []string, chunks int) []Job {
 		})
 	}
 	return jobs
-}
-
-type Job struct {
-	Csv   string
-	Paths []string
-}
-
-type JobResult struct {
-	Error error
-	Tracks
-	ArtistAlbumMap
-}
-
-func worker(id int, wg *sync.WaitGroup, jobChannel chan Job, jobResultChannel chan JobResult) {
-	defer wg.Done()
-	for job := range jobChannel {
-		processPathChunks(id, job, jobResultChannel)
-	}
 }
 
 /*
@@ -167,14 +150,14 @@ func processPathChunks(id int, job Job, jobResultChannel chan JobResult) {
 			debug.Log("matches: %s", json.Stringify(matches))
 			if len(matches) == 0 {
 				debug.Error("Cannot Resolve Metadata!")
-				jobResultChannel <- JobResult{Error: err}
+				jobResultChannel <- JobResult{Err: err}
 				return
 			}
 			// grep tracks
 			tracks, err := grepToTracks(flattenMatches(matches))
 			if err != nil {
 				debug.Error("grepToTracks! %w", err)
-				jobResultChannel <- JobResult{Error: err}
+				jobResultChannel <- JobResult{Err: err}
 				return
 			}
 			for _, _track := range tracks {
@@ -196,7 +179,7 @@ func processPathChunks(id int, job Job, jobResultChannel chan JobResult) {
 			if track.Title == "" {
 				err = fmt.Errorf("Missing Title from file %s", basename)
 				debug.Error(err.Error())
-				jobResultChannel <- JobResult{Error: err}
+				jobResultChannel <- JobResult{Err: err}
 				return
 			}
 			matches = nil
@@ -205,7 +188,7 @@ func processPathChunks(id int, job Job, jobResultChannel chan JobResult) {
 		tracks = append(tracks, track)
 		trackMap.Add(&track)
 	}
-	jobResultChannel <- JobResult{Error: nil, Tracks: tracks, ArtistAlbumMap: trackMap}
+	jobResultChannel <- JobResult{Err: nil, Tracks: tracks, ArtistAlbumMap: trackMap}
 }
 
 /*
