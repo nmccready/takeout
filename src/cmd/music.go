@@ -25,7 +25,7 @@ func init() {
 
 var musicCmd = &cobra.Command{
 	Use:   "music",
-	Short: "Reorg the music files into their csc dir struct",
+	Short: "Reorg the music files into a sane Artist/Album/Track structure",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		mp3Path := args[0]
 
