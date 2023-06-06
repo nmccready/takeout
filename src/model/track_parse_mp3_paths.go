@@ -240,6 +240,9 @@ func grepToTracks(matches []string, origFilename string) (*Track, error) {
 	numberMatches := fileNumberOnly.FindAllStringSubmatch(origFilename, -1)
 	if len(numberMatches) != 0 {
 		index, err = strconv.Atoi(numberMatches[0][0])
+		if err != nil {
+			return nil, err
+		}
 	}
 	track := ToTrack(rows[index], origFilename)
 	return &track, nil
