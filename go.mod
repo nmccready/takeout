@@ -3,6 +3,7 @@ module github.com/nmccready/takeout
 go 1.19
 
 require (
+	github.com/bogem/id3v2 v1.2.0
 	github.com/dhowden/tag v0.0.0-20220618230019-adf36e896086
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.4
@@ -17,6 +18,7 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	golang.org/x/sys v0.0.0-20191026070338-33540a1f6037 // indirect
+	golang.org/x/text v0.3.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
