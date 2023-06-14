@@ -148,7 +148,11 @@ func processPathChunks(id int, job Job, jobResultChannel chan JobResult) {
 
 		// attempt to dequeue the csv to reduce matches
 		if track.Title != "" { // id tag found remove it from csv
-			track.removeFromCsv(csv)
+			csv, err = track.removeFromCsv(csv)
+			if err != nil {
+				jobResultChannel <- JobResult{Err: err}
+				return
+			}
 		}
 
 		// BEGIN FALLBACK TO METADATA FILE
