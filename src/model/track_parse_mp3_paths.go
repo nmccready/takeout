@@ -12,6 +12,7 @@ import (
 
 	gDebug "github.com/nmccready/go-debug"
 	"github.com/nmccready/takeout/src/async"
+	"github.com/nmccready/takeout/src/functional"
 	"github.com/nmccready/takeout/src/json"
 	"github.com/nmccready/takeout/src/slice"
 )
@@ -87,6 +88,26 @@ func pathsToJobs(csv []byte, paths []string, chunks int) []Job {
 	return jobs
 }
 
+type TrackSearch struct {
+	Basename     string
+	Mp3FileName  string
+	MetaReg      *TrackRegExpOpts
+	OrigFilename string
+}
+
+func InitTrackSearch(origFilename, filePath string) *TrackSearch {
+	basename := strings.ReplaceAll(origFilename, path.Ext(filePath), "")
+	mp3FileName := cleanTrackMp3FileName(basename)
+	metaReg := setupMetaPatterns(mp3FileName, titleMetaMatchStr)
+	ts := TrackSearch{
+		Basename:     basename,
+		Mp3FileName:  mp3FileName,
+		MetaReg:      metaReg,
+		OrigFilename: origFilename,
+	}
+	return &ts
+}
+
 /*
 Take a group of paths and out put them as a slice and map of tracks
 map:
@@ -94,7 +115,6 @@ map:
 	Artists -> Album -> Songs
 */
 func processPathChunks(id int, job Job, jobResultChannel chan JobResult) {
-	removedCsv := ""
 	tracks := Tracks{}
 	trackMap := ArtistAlbumMap{}
 	csv := job.Csv
@@ -103,14 +123,10 @@ func processPathChunks(id int, job Job, jobResultChannel chan JobResult) {
 		debug.Log("path: %s", filePath)
 		err, track, origFilename := ParseId3ToTrack(filePath)
 
-		basename := strings.ReplaceAll(origFilename, path.Ext(filePath), "")
-
-		mp3FileName := cleanTrackMp3FileName(basename)
-
-		var matches [][]string
-
-		//nolint
-		metaReg := setupMetaPatterns(mp3FileName, titleMetaMatchStr)
+		ts := InitTrackSearch(origFilename, filePath)
+		basename := ts.Basename
+		mp3FileName := ts.Mp3FileName
+		metaReg := ts.MetaReg
 
 		debug.Log(gDebug.Fields{
 			"regexStr":      metaReg.RegexStr,
@@ -131,38 +147,15 @@ func processPathChunks(id int, job Job, jobResultChannel chan JobResult) {
 		// instead we must grep for matches to the csv rows (close enough to the title)
 
 		// attempt to dequeue the csv to reduce matches
-		if track.Title != "" {
-			id3Reg := setupMetaPatterns(track.ToMetaRow(), titleId3MatchStr)
-			id3Matches := id3Reg.TrackRegex.FindStringSubmatch(csv)
-			debug.Log(gDebug.Fields{
-				"id3Matches": id3Matches,
-				"id3Reg":     *id3Reg,
-			})
-			if len(id3Matches) != 0 {
-				lineToRemove := id3Matches[0]
-				csv = id3Reg.TrackRegex.ReplaceAllString(csv, "")
-				removedCsv += "\n" + lineToRemove
-				debug.Log("lineToRemove: %s", lineToRemove)
-				// debug.Log("removedCsv: %s", removedCsv)
-				// debug.Error("sanity exit")
-				// os.Exit(1)
-			}
+		if track.Title != "" { // id tag found remove it from csv
+			track.removeFromCsv(csv)
 		}
 
 		// BEGIN FALLBACK TO METADATA FILE
 		if err != nil || track.Title == "" {
 			// utilize csv to derive the info via grep / regex
-
-			matches = metaReg.TrackRegex.FindAllStringSubmatch(csv, -1)
-			debug.Log("matches: %s", json.Stringify(matches))
-			if len(matches) == 0 {
-				debug.Error("Cannot Resolve Metadata!")
-				jobResultChannel <- JobResult{Err: err}
-				return
-			}
-			// grep tracks
 			var trackRef *Track
-			trackRef, err = grepToTracks(flattenMatches(matches), origFilename)
+			trackRef, csv, err = getTrackFromCsvClean(origFilename, csv, metaReg)
 			if err != nil {
 				debug.Error("grepToTracks! %w", err)
 				jobResultChannel <- JobResult{Err: err}
@@ -182,7 +175,6 @@ func processPathChunks(id int, job Job, jobResultChannel chan JobResult) {
 				jobResultChannel <- JobResult{Err: err}
 				return
 			}
-			matches = nil
 		}
 		debug.Log("track: %s", json.Stringify(track))
 		tracks = append(tracks, track)
@@ -191,23 +183,63 @@ func processPathChunks(id int, job Job, jobResultChannel chan JobResult) {
 	jobResultChannel <- JobResult{Err: nil, Tracks: tracks, ArtistAlbumMap: trackMap}
 }
 
+func (track *Track) removeFromCsv(csv string) (string, error) {
+	id3Reg := setupMetaPatterns(track.ToMetaRow(), titleId3MatchStr)
+	id3Matches := id3Reg.TrackRegex.FindStringSubmatch(csv)
+	debug.Log(gDebug.Fields{
+		"id3Matches": id3Matches,
+		"id3Reg":     *id3Reg,
+	})
+	if len(id3Matches) != 0 {
+		csv = id3Reg.TrackRegex.ReplaceAllString(csv, "")
+	}
+	return csv, nil
+}
+
+func getTrackInfoFromCsv(origFilename, csv string, metaReg *TrackRegExpOpts) (*Track, error) {
+	matches := metaReg.TrackRegex.FindAllStringSubmatch(csv, -1)
+	debug.Log("metaReg: %+v", metaReg)
+	debug.Log("matches: %s", json.Stringify(matches))
+	if len(matches) == 0 {
+		return nil, fmt.Errorf("No matches found for %s", metaReg.TrackRegex)
+	}
+	// grep tracks
+	return grepToTracks(flattenMatches(matches), origFilename)
+}
+
+func getTrackFromCsvClean(origFilename, csv string, metaReg *TrackRegExpOpts) (track *Track, retCsv string, err error) {
+	err = functional.LazyFn(
+		func() error {
+			track, err = getTrackInfoFromCsv(origFilename, csv, metaReg)
+			return err
+		},
+		func() error {
+			retCsv, err = track.removeFromCsv(csv)
+			return err
+		})
+	if err != nil {
+		return nil, "", err
+	}
+	return track, retCsv, nil
+}
+
 /*
 google only allows the title whatever.mp3 to be so long and it gets cut off
 
 So here we do a title header fudge factor to allow our meta to match.
 */
-var titleMetaMatchStr = `[\s|\w|)|(|\[|\]|\.|,|&|#|!]*"?,`
+var titleMetaMatchStr = `[\w|)|(|\[|\]|\.|,|&|#|!]*"?,`
 var titleId3MatchStr = `"?,` // more exact using to dequeue csv
 
-type trackRegExpOpts struct {
+type TrackRegExpOpts struct {
 	RegexStr      string
 	TitleRegexStr string
 	TrackRegex    *regexp.Regexp
 	TitleRegex    *regexp.Regexp
 }
 
-func setupMetaPatterns(mp3FileName, titleAppend string) *trackRegExpOpts {
-	opts := trackRegExpOpts{}
+func setupMetaPatterns(mp3FileName, titleAppend string) *TrackRegExpOpts {
+	opts := TrackRegExpOpts{}
 	// grep basic raw file
 	opts.RegexStr = `(?mi)^"?` + safeRegex(mp3FileName) + titleAppend + ".*"
 	opts.TitleRegexStr = safeRegex(mp3FileName)
@@ -239,7 +271,7 @@ func grepToTracks(matches []string, origFilename string) (*Track, error) {
 	index := 0
 	numberMatches := fileNumberOnly.FindAllStringSubmatch(origFilename, -1)
 	if len(numberMatches) != 0 {
-		index, err = strconv.Atoi(numberMatches[0][0])
+		index, err = strconv.Atoi(numberMatches[0][1])
 		if err != nil {
 			return nil, err
 		}
@@ -249,7 +281,7 @@ func grepToTracks(matches []string, origFilename string) (*Track, error) {
 }
 
 var incrementedFileName = regexp.MustCompile(`(.*)\(\d+\)`)
-var fileNumberOnly = regexp.MustCompile(`.*\(\d+\)`)
+var fileNumberOnly = regexp.MustCompile(`\((\d+)\)`)
 
 /*
 Title Names to Filenames considerations
