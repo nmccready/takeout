@@ -136,7 +136,7 @@ func processPathChunks(id int, job Job, jobResultChannel chan JobResult) {
 
 		// partial id3 read / fix
 		if err == nil && track.Title == "" &&
-			track.Artist != "" &&
+			track.AlbumArtist != "" &&
 			track.Album != "" {
 			track.Title = mp3FileName
 			track.OrigFilename = origFilename

@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 
+	"github.com/bogem/id3v2"
 	id3 "github.com/dhowden/tag"
 	"github.com/nmccready/takeout/src/json"
 	_os "github.com/nmccready/takeout/src/os"
@@ -15,12 +17,54 @@ import (
 type Tracker struct{}
 
 type Track struct {
-	Title          string
-	Album          string
-	Artist         string
 	SupportArtists []string
-	DurationSec    string
 	OrigFilename   string
+	DurationSec    string
+
+	// Begin id3 Metadata
+	Format   id3.Format
+	FileType id3.FileType
+	Title    string
+
+	Album       string
+	Artist      string
+	AlbumArtist string
+	Composer    string
+	Year        int
+	Genre       string
+	Picture     *id3.Picture
+	Lyrics      string
+	Comment     string
+
+	Raw map[string]interface{}
+}
+
+func Id3MetadataToTrack(meta id3.Metadata) *Track {
+	track := Track{}
+	track.Format = meta.Format()
+	track.FileType = meta.FileType()
+	track.Title = meta.Title()
+	track.Album = meta.Album()
+	track.Artist = meta.Artist()
+	track.AlbumArtist = meta.AlbumArtist()
+	track.Composer = meta.Composer()
+	track.Year = meta.Year()
+	track.Genre = meta.Genre()
+	track.Picture = meta.Picture()
+	track.Lyrics = meta.Lyrics()
+	track.Comment = meta.Comment()
+	return &track
+}
+
+func Id3V2TagToTrack(tag *id3v2.Tag) *Track {
+	year, _ := strconv.Atoi(tag.Year())
+	return &Track{
+		Title:  tag.Title(),
+		Artist: tag.Artist(),
+		Album:  tag.Album(),
+		Year:   year,
+		Genre:  tag.Genre(),
+	}
 }
 
 type Tracks []Track
@@ -57,18 +101,19 @@ func (t1 Tracks) Merge(t2 Tracks) Tracks {
 	return tracks
 }
 
-func ToTrack(row []string, originalFilename string) Track {
-	debugTrack.Log("row: %s", json.Stringify(row))
+func ToTrack(csvRow []string, originalFilename string) Track {
+	debugTrack.Log("row: %s", json.Stringify(csvRow))
 	track := Track{}
-	track.Title = row[0]
-	track.Album = row[1]
-	artistsJoined := row[2]
+	track.Title = csvRow[0]
+	track.Album = csvRow[1]
+	artistsJoined := csvRow[2]
 	artists := strings.Split(artistsJoined, "/")
 	track.Artist = artists[0]
+	track.AlbumArtist = artists[0]
 	if len(artists) > 1 {
 		track.SupportArtists = artists[1 : len(artists)-1]
 	}
-	track.DurationSec = row[3]
+	track.DurationSec = csvRow[3]
 	track.OrigFilename = originalFilename
 	return track
 }
@@ -94,15 +139,15 @@ func ParseCsvToTracks(csv [][]string) (Tracks, ArtistAlbumMap) {
 			trackNameCounter[track.Title] = ctr + 1
 		}
 		tracks = append(tracks, track)
-		if trackMap[track.Artist] == nil {
-			trackMap[track.Artist] = AlbumMap{track.Album: {track}}
+		if trackMap[track.AlbumArtist] == nil {
+			trackMap[track.AlbumArtist] = AlbumMap{track.Album: {track}}
 			continue
 		}
-		if trackMap[track.Artist][track.Album] == nil {
-			trackMap[track.Artist][track.Album] = Tracks{track}
+		if trackMap[track.AlbumArtist][track.Album] == nil {
+			trackMap[track.AlbumArtist][track.Album] = Tracks{track}
 			continue
 		}
-		trackMap[track.Artist][track.Album] = append(trackMap[track.Artist][track.Album], track)
+		trackMap[track.AlbumArtist][track.Album] = append(trackMap[track.AlbumArtist][track.Album], track)
 	}
 	return tracks, trackMap
 }
@@ -130,19 +175,12 @@ func ParseId3ToTrack(mp3Path string) (error, Track, string) {
 	}
 	defer file.Close()
 
-	t := Track{}
-	// defer tag.Close()
-	// artists := tag.Artists()
-	// t.Artist = artists[0]
-	// t.Artist = tag.Artist()
-	t.Artist = tag.AlbumArtist()
-	t.Album = tag.Album()
-	t.Title = tag.Title()
+	t := Id3MetadataToTrack(tag)
 	t.OrigFilename = origFilename
 	// if len(artists) > 1 {
 	// 	t.SupportArtists = artists[1 : len(artists)-1]
 	// }
-	return nil, t, origFilename
+	return nil, *t, origFilename
 }
 
 func (t Track) GetArtistKey() string {
