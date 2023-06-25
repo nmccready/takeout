@@ -33,7 +33,18 @@ func Search(query string) ([]Result, error) {
 	return results, nil
 }
 
-// searchDeezer performs a music search query on the Deezer API and returns the search results.
+type SearchOpts struct {
+	Title  string
+	Album  string
+	Artist string
+	Year   string
+}
+
+/*
+	searchDeezer performs a music search query on the Deezer API and returns the search results.
+
+https://api.deezer.com/search?q=eminem
+*/
 func searchDeezer(query string) ([]Result, error) {
 	// Set up the API endpoint URL
 	baseURL := "https://api.deezer.com/search"
