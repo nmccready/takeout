@@ -3,7 +3,7 @@ package json
 import (
 	"encoding/json"
 
-	"github.com/nmccready/takeout/src/logger"
+	"github.com/nmccready/takeout/src/internal/logger"
 )
 
 var debug = logger.Spawn("json")

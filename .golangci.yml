@@ -1,3 +1,6 @@
+linters-settings:
+  disable:
+    - gochecknoglobals
 # Options for analysis running.
 run:
   # The default concurrency value is the number of available CPU.

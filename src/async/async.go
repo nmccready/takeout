@@ -4,7 +4,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/nmccready/takeout/src/logger"
+	"github.com/nmccready/takeout/src/internal/logger"
 )
 
 // nolint

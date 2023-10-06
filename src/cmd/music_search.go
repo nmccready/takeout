@@ -1,9 +1,16 @@
 package cmd
 
 import (
+	"fmt"
+
+	"github.com/nmccready/takeout/src/json"
 	"github.com/nmccready/takeout/src/music"
 	"github.com/spf13/cobra"
+
+	"github.com/nmccready/takeout/src/internal/logger"
 )
+
+var debug = logger.Spawn("cmd:music:search")
 
 type MusicSearchFlags struct {
 	Title  string
@@ -25,9 +32,21 @@ func init() {
 // nolint
 var musicSearch = &cobra.Command{
 	Use:   "search",
-	Short: "search for music via deezer or Itunes",
+	Short: "search for music via deezer or ITunes",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		music.Search(searchFlags.Title, searchFlags.Album, searchFlags.Artist, searchFlags.Year)
+		debug.Spawn("searchFlag").Log(json.StringifyPretty(searchFlags))
+		result, err := music.Search(
+			music.SearchOpts{
+				Title:  searchFlags.Title,
+				Album:  searchFlags.Album,
+				Artist: searchFlags.Artist,
+				Year:   searchFlags.Year,
+			})
+
+		if err != nil {
+			return err
+		}
+		fmt.Println(json.StringifyPretty(result))
 		return nil
 	},
 }

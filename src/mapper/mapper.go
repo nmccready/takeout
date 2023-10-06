@@ -3,7 +3,7 @@ package mapper
 import (
 	"sort"
 
-	"github.com/nmccready/takeout/src/logger"
+	"github.com/nmccready/takeout/src/internal/logger"
 )
 
 // nolint: deadcode,unused

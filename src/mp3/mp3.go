@@ -4,7 +4,7 @@ import (
 	"strconv"
 
 	"github.com/bogem/id3v2"
-	"github.com/nmccready/takeout/src/logger"
+	"github.com/nmccready/takeout/src/internal/logger"
 	"github.com/nmccready/takeout/src/model"
 )
 
