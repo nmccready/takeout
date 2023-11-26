@@ -8,7 +8,7 @@ require (
 	github.com/go-openapi/errors v0.20.4
 	github.com/nmccready/go-debug v0.5.0
 	github.com/nmccready/oauth2 v0.0.0-20231123215649-1be96b3d7fc6
-	github.com/spf13/cobra v1.7.0
+	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.8.4
 )
 
