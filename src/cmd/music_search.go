@@ -35,7 +35,7 @@ var musicSearch = &cobra.Command{
 	Short: "search for music via deezer or ITunes",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		debug.Spawn("searchFlag").Log(json.StringifyPretty(searchFlags))
-		result, err := music.Search(
+		results, err := music.Search(
 			music.SearchOpts{
 				Title:  searchFlags.Title,
 				Album:  searchFlags.Album,
@@ -46,7 +46,7 @@ var musicSearch = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Println(json.StringifyPretty(result))
+		fmt.Println(json.StringifyPretty(results[0]))
 		return nil
 	},
 }

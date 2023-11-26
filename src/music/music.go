@@ -46,20 +46,35 @@ type SearchOpts struct {
 	Year   string
 }
 
+func deezerKeyValue(key, value string) string {
+	return fmt.Sprintf("%s:\"%s\"", key, value)
+}
+
+// deezerEncode encodes the search options into a Deezer API query string.
+// q=track:"eminem" album:"curtain call" artist:"eminem"
 func (opts SearchOpts) deezerEncode() string {
 	query := url.Values{}
-	if opts.Title != "" {
-		query.Set("q", opts.Title)
-	}
+	keyValues := map[string]string{}
 	if opts.Album != "" {
-		query.Set("album", opts.Album)
+		keyValues["album"] = opts.Album
 	}
 	if opts.Artist != "" {
-		query.Set("artist", opts.Artist)
+		keyValues["artist"] = opts.Artist
 	}
-	if opts.Year != "" {
-		query.Set("year", opts.Year)
+	if opts.Title != "" {
+		keyValues["tack"] = opts.Title
 	}
+
+	queryStr := ""
+	for key, value := range keyValues {
+		if queryStr != "" {
+			queryStr += " "
+		}
+		queryStr += deezerKeyValue(key, value)
+	}
+
+	query.Set("q", queryStr)
+
 	return query.Encode()
 }
 
