@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
+	_os "os"
+
 	"github.com/nmccready/oauth2"
 	"github.com/nmccready/takeout/src/internal/logger"
 	"github.com/nmccready/takeout/src/os"
@@ -12,11 +14,8 @@ import (
 
 var debug = logger.Spawn("oauth2")
 
-var staticIp = os.GetRequiredEnv("STATIC_IP")
-var deezerPort = os.GetRequiredEnv("DEEZER_PORT")
-
-var cachePath = []string{".takeout", "ouath2_tokens.json"}
-var cacheFilename = cachePath[len(cachePath)-1]
+var _cachePath = []string{".takeout", "ouath2_tokens.json"}
+var cacheFilename = _cachePath[len(_cachePath)-1]
 
 type (
 	HttpCallback func(w http.ResponseWriter, r *http.Request)
@@ -39,7 +38,7 @@ type (
 type TokenCache = map[string]*oauth2.Token
 
 // Attempt to load the token from the cache file.
-func LoadTokenCache(clientId string) (*TokenCache, error) {
+func BaseLoadTokenCache(clientId string, cachePath []string) (*TokenCache, error) {
 	cache := TokenCache{}
 	// Load the token from the cache file
 	err := os.LoadJSON(cachePath, &cache)
@@ -49,8 +48,17 @@ func LoadTokenCache(clientId string) (*TokenCache, error) {
 	return &cache, nil
 }
 
-func LoadToken(clientId string) (*oauth2.Token, error) {
-	cache, err := LoadTokenCache(clientId)
+func LoadTokenCache(clientId string) (*TokenCache, error) {
+	homeDir, err := _os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+	paths := append(_cachePath, homeDir)
+	return BaseLoadTokenCache(clientId, paths)
+}
+
+func BaseLoadToken(clientId string, cachePath []string) (*oauth2.Token, error) {
+	cache, err := BaseLoadTokenCache(clientId, cachePath)
 	if err != nil {
 		return nil, err
 	}
@@ -60,8 +68,14 @@ func LoadToken(clientId string) (*oauth2.Token, error) {
 	return nil, fmt.Errorf("token not found in cache")
 }
 
+func LoadToken(clientId string) (*oauth2.Token, error) {
+	return BaseLoadToken(clientId, _cachePath)
+}
+
 // getDeezerToken retrieves an OAuth2 token for the Deezer API.
 func GetDeezerToken() (*oauth2.Token, error) {
+	deezerPort := os.GetRequiredEnv("DEEZER_PORT")
+	staticIp := os.GetRequiredEnv("STATIC_IP")
 	accessCodeChannel := make(chan string)
 	tokenChannel := make(chan OauthTokenResponse)
 	httpCb := genHandleRedirectCallback("code", accessCodeChannel)

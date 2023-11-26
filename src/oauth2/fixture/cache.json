@@ -1,5 +1,4 @@
 {
-  // basic cache struct
   "1234567890": {
     "access_token": "abcdefg",
     "token_type": "Bearer",
