@@ -17,7 +17,9 @@ func main() {
 
 	// Perform the search
 	query := strings.Join(os.Args[1:], " ")
-	results, err := music.Search(query)
+	results, err := music.Search(music.SearchOpts{
+		Title: query,
+	})
 	if err != nil {
 		fmt.Printf("An error occurred during the search: %s\n", err)
 		return

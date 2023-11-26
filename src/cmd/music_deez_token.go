@@ -20,7 +20,7 @@ var musicDeezerToken = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Println("token: %s", token)
+		fmt.Printf("token: %s\n", token.AccessToken)
 		return nil
 	},
 }
