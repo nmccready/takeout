@@ -1,8 +1,11 @@
 package os
 
 import (
+	"encoding/json"
+	"fmt"
 	"io"
 	"os"
+	"path"
 
 	"github.com/nmccready/takeout/src/internal/logger"
 )
@@ -37,4 +40,30 @@ func ExitOnError(err error) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func GetEnv(key string) (string, error) {
+	val := os.Getenv(key)
+	if val == "" {
+		return "", fmt.Errorf("env var %s is not set", key)
+	}
+	return val, nil
+}
+
+func GetRequiredEnv(key string) string {
+	val, err := GetEnv(key)
+	if err != nil {
+		panic(err)
+	}
+	return val
+}
+
+func LoadJSON(paths []string, v interface{}) error {
+	bytes, err := os.ReadFile(path.Join(paths...))
+
+	if err != nil {
+		return err
+	}
+
+	return json.Unmarshal(bytes, v)
 }

@@ -5,11 +5,17 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/nmccready/oauth2"
 	"github.com/nmccready/takeout/src/internal/logger"
-	"golang.org/x/oauth2"
+	"github.com/nmccready/takeout/src/os"
 )
 
 var debug = logger.Spawn("oauth2")
+
+var STATIC_IP = os.GetRequiredEnv("STATIC_IP")
+var DEEZER_PORT = os.GetRequiredEnv("DEEZER_PORT")
+
+var CACHE_PATH = []string{"tmp", ".takeout", "ouath2_tokens.json"}
 
 type (
 	HttpCallback func(w http.ResponseWriter, r *http.Request)
@@ -23,8 +29,21 @@ type (
 		TokenResponseChan chan OauthTokenResponse
 		AccessCodeChan    chan string
 		RedirectOpts
+		AuthStyle      oauth2.AuthStyle
+		AuthCodeOption oauth2.AuthCodeOption
 	}
 )
+
+// Attempt to load the token from the cache file.
+func LoadTokenFromCache() (*oauth2.Token, error) {
+	token := &oauth2.Token{}
+	// Load the token from the cache file
+	err := os.LoadJSON(CACHE_PATH, token)
+	if err != nil {
+		return nil, err
+	}
+	return token, nil
+}
 
 // getDeezerToken retrieves an OAuth2 token for the Deezer API.
 func GetDeezerToken() (*oauth2.Token, error) {
@@ -33,23 +52,27 @@ func GetDeezerToken() (*oauth2.Token, error) {
 	httpCb := genHandleRedirectCallback("code", accessCodeChannel)
 	innerSO := ExchangeOpts{
 		RedirectOpts: RedirectOpts{
-			Port: "8080",
-			Base: "", // hoping this is 0.0.0.0 ?
+			Port: DEEZER_PORT,
+			Base: STATIC_IP,
 			Path: "deezer",
 		},
 		AccessCodeChan:    accessCodeChannel,
 		TokenResponseChan: tokenChannel,
+		AuthStyle:         oauth2.AuthStyleAutoDetect,
+		AuthCodeOption:    oauth2.AccessTypeOffline,
 	}
 
 	// Start HTTP server to handle Deezer API redirect callback
 	http.HandleFunc("/"+innerSO.Path, httpCb)
-	go http.ListenAndServe(fmt.Sprintf("%s:%s", innerSO.Base, innerSO.Port), nil)
-	debug.Log("Listening on http://%s:%s/%s", innerSO.Base, innerSO.Port, innerSO.Path)
+	// fix the below function so that it actually serves with a handler and not nil
+	go http.ListenAndServe(fmt.Sprintf(":%s", innerSO.Port), nil)
+	debug.Log("Listening on http://:%s/%s", innerSO.Port, innerSO.Path)
 	go exchangeAccessCodeForToken(innerSO)
 	debug.Log("Waiting for access code")
 
 	payload := <-tokenChannel // hangs here
 	debug.Log("Got access code")
+	debug.Log("payload: %+v", payload)
 
 	return payload.Token, payload.Error
 }
@@ -67,13 +90,21 @@ func genHandleRedirectCallback(codeField string, accessCodeChannel chan string) 
 
 func exchangeAccessCodeForToken(opts ExchangeOpts) {
 	config := ConfigDeezer(&opts.RedirectOpts)
-	debug.Log("config: %+v", config)
+	safeConfig := *config
+	safeConfig.ClientID = "********"
+	safeConfig.ClientSecret = "********"
+	debug.Log("config: %+v", safeConfig)
 
 	// Wait for the access code
-	config.AuthCodeURL("state", oauth2.AccessTypeOffline)
+	url := config.AuthCodeURL("state", opts.AuthCodeOption)
+	fmt.Printf("Visit the URL for the auth dialog: %v", url)
 	accessCode := <-opts.AccessCodeChan
 
+	debug.Log("accessCode: %s", accessCode)
+
 	// Retrieve an access token
-	token, err := config.Exchange(context.Background(), accessCode)
+	config.Endpoint.AuthStyle = opts.AuthStyle
+	token, err := config.Exchange(context.Background(), accessCode) // FAILING HERE
+	// payload: {Token:<nil> Error:oauth2: cannot parse json: invalid character 'a' looking for beginning of value}
 	opts.TokenResponseChan <- OauthTokenResponse{Token: token, Error: err}
 }

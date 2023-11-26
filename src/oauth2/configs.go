@@ -2,9 +2,9 @@ package oauth2
 
 import (
 	"fmt"
-	"os"
 
-	"golang.org/x/oauth2"
+	"github.com/nmccready/takeout/src/os"
+	"github.com/nmccready/oauth2"
 )
 
 type (
@@ -17,10 +17,10 @@ type (
 
 func ConfigDeezer(opts *RedirectOpts) *oauth2.Config {
 	return &oauth2.Config{
-		ClientID:     os.Getenv("DEEZER_APPLICATION_ID"),
-		ClientSecret: os.Getenv("DEEZER_SECRET_KEY"),
+		ClientID:     os.GetRequiredEnv("DEEZER_APPLICATION_ID"),
+		ClientSecret: os.GetRequiredEnv("DEEZER_SECRET_KEY"),
 		RedirectURL: fmt.Sprintf(
-			"https://redirectmeto.com/http://%s:%s/%s",
+			"http://%s:%s/%s", // https://redirectmeto.com/
 			opts.Base,
 			opts.Port,
 			opts.Path,

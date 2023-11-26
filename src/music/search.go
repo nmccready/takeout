@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/nmccready/oauth2"
 	_oauth2 "github.com/nmccready/takeout/src/oauth2"
-	"golang.org/x/oauth2"
 )
 
 /*
