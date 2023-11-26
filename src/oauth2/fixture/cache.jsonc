@@ -1,0 +1,9 @@
+{
+  // basic cache struct
+  "1234567890": {
+    "access_token": "abcdefg",
+    "token_type": "Bearer",
+    "expires_in": 3600,
+    "refresh_token": "hijklmn"  
+  }
+}
