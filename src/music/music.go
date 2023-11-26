@@ -35,8 +35,9 @@ func Search(opts SearchOpts) ([]Result, error) {
 	// }
 
 	// Combine the results from both APIs
-	results := append(deezerResults) //, itunesResults...)
-	return results, nil
+	// results := append(deezerResults) //, itunesResults...)
+	return deezerResults, nil
+	// return results, nil
 }
 
 type SearchOpts struct {
@@ -78,6 +79,7 @@ func (opts SearchOpts) deezerEncode() string {
 	return query.Encode()
 }
 
+// nolint
 func (opts SearchOpts) appleMusicEncode() string {
 	query := url.Values{}
 	if opts.Title != "" {
@@ -96,6 +98,7 @@ func (opts SearchOpts) appleMusicEncode() string {
 }
 
 // searchAppleMusic performs a music search query on the iTunes API and returns the search results.
+// nolint
 func searchAppleMusic(query string) ([]Result, error) {
 	// Set up the API endpoint URL
 	baseURL := "https://itunes.apple.com/search"

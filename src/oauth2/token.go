@@ -13,7 +13,6 @@ import (
 var debug = logger.Spawn("oauth2")
 
 var _cachePath = []string{".takeout", "ouath2_tokens.json"}
-var cacheFilename = _cachePath[len(_cachePath)-1]
 
 type (
 	HttpCallback func(w http.ResponseWriter, r *http.Request)

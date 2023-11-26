@@ -37,7 +37,12 @@ func GetDeezerToken() (*oauth2.Token, error) {
 	// Start HTTP server to handle Deezer API redirect callback
 	http.HandleFunc("/"+innerSO.Path, httpCb)
 	// fix the below function so that it actually serves with a handler and not nil
-	go http.ListenAndServe(fmt.Sprintf(":%s", innerSO.Port), nil)
+	go func() {
+		err := http.ListenAndServe(fmt.Sprintf(":%s", innerSO.Port), nil)
+		if err != nil {
+			panic(err)
+		}
+	}()
 	debug.Log("Listening on http://:%s/%s", innerSO.Port, innerSO.Path)
 	go exchangeAccessCodeForToken(innerSO)
 	debug.Log("Waiting for access code")
@@ -46,7 +51,10 @@ func GetDeezerToken() (*oauth2.Token, error) {
 	debug.Log("Got access code")
 	debug.Log("payload: %+v", payload)
 
-	SaveToken(innerSO.Config.ClientID, payload.Token)
+	err := SaveToken(innerSO.Config.ClientID, payload.Token)
+	if err != nil {
+		return nil, err
+	}
 
 	return payload.Token, payload.Error
 }
