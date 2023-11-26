@@ -59,11 +59,46 @@ func GetRequiredEnv(key string) string {
 }
 
 func LoadJSON(paths []string, v interface{}) error {
-	bytes, err := os.ReadFile(path.Join(paths...))
-
+	// copy paths except last element
+	dirPaths := paths[:len(paths)-1]
+	// mkdir -p
+	loadPath := path.Join(dirPaths...)
+	debug.Log("LoadJSON loadPath: %s", loadPath)
+	err := os.MkdirAll(loadPath, 0755)
+	if err != nil {
+		return err
+	}
+	filePath := path.Join(paths...)
+	debug.Log("LoadJSON filePath : %s", filePath)
+	bytes, err := os.ReadFile(filePath)
 	if err != nil {
 		return err
 	}
 
 	return json.Unmarshal(bytes, v)
+}
+func SaveJSON(paths []string, v interface{}) error {
+	bytes, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return err
+	}
+	// copy paths except last element
+	dirPaths := paths[:len(paths)-1]
+	// mkdir -p
+	err = os.MkdirAll(path.Join(dirPaths...), 0755)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(path.Join(paths...), bytes, 0644)
+}
+
+func GetHomeDirWithPaths(paths []string) ([]string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		debug.Error("error getting home dir: %s", err)
+		return nil, err
+	}
+	debug.Log("homeDir: %s", homeDir)
+	return append([]string{homeDir}, paths...), nil
 }

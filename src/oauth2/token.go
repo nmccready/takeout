@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	_os "os"
-
 	"github.com/nmccready/oauth2"
 	"github.com/nmccready/takeout/src/internal/logger"
 	"github.com/nmccready/takeout/src/os"
@@ -35,77 +33,73 @@ type (
 	}
 )
 
-type TokenCache = map[string]*oauth2.Token
+type TokenCache map[string]*oauth2.Token
 
-// Attempt to load the token from the cache file.
-func BaseLoadTokenCache(clientId string, cachePath []string) (*TokenCache, error) {
-	cache := TokenCache{}
-	// Load the token from the cache file
-	err := os.LoadJSON(cachePath, &cache)
-	if err != nil {
-		return nil, err
-	}
-	return &cache, nil
+func (tc TokenCache) IsEmpty() bool {
+	return len(tc) == 0
 }
 
-func LoadTokenCache(clientId string) (*TokenCache, error) {
-	homeDir, err := _os.UserHomeDir()
+// Attempt to load the token from the cache file.
+func BaseLoadTokenCache(clientId string, cachePath []string) (TokenCache, error) {
+	cache := TokenCache{}
+	// Load the token from the cache file
+	// nolint
+	_ = os.LoadJSON(cachePath, &cache)
+	return cache, nil
+}
+
+func LoadTokenCache(clientId string) (TokenCache, error) {
+	paths, err := os.GetHomeDirWithPaths(_cachePath)
 	if err != nil {
 		return nil, err
 	}
-	paths := append(_cachePath, homeDir)
 	return BaseLoadTokenCache(clientId, paths)
 }
 
+var loadTokenDbg = debug.Spawn("BaseLoadToken")
+
 func BaseLoadToken(clientId string, cachePath []string) (*oauth2.Token, error) {
+	loadTokenDbg.Log("cachePath: %s", cachePath)
 	cache, err := BaseLoadTokenCache(clientId, cachePath)
+
 	if err != nil {
+		loadTokenDbg.Error("token found not for clientId: %s, err: %s", clientId, err.Error())
 		return nil, err
 	}
-	if token, ok := (*cache)[clientId]; ok {
+	if token, ok := cache[clientId]; ok {
+		loadTokenDbg.Log("token found for clientId: %s", clientId)
 		return token, nil
 	}
 	return nil, fmt.Errorf("token not found in cache")
 }
 
 func LoadToken(clientId string) (*oauth2.Token, error) {
-	return BaseLoadToken(clientId, _cachePath)
+	paths, err := os.GetHomeDirWithPaths(_cachePath)
+	if err != nil {
+		return nil, err
+	}
+	return BaseLoadToken(clientId, paths)
 }
 
-// getDeezerToken retrieves an OAuth2 token for the Deezer API.
-func GetDeezerToken() (*oauth2.Token, error) {
-	deezerPort := os.GetRequiredEnv("DEEZER_PORT")
-	staticIp := os.GetRequiredEnv("STATIC_IP")
-	accessCodeChannel := make(chan string)
-	tokenChannel := make(chan OauthTokenResponse)
-	httpCb := genHandleRedirectCallback("code", accessCodeChannel)
-	redirectOpts := RedirectOpts{
-		Port: deezerPort,
-		Base: staticIp,
-		Path: "deezer",
-	}
-	innerSO := ExchangeOpts{
-		RedirectOpts:      redirectOpts,
-		AccessCodeChan:    accessCodeChannel,
-		TokenResponseChan: tokenChannel,
-		AuthStyle:         oauth2.AuthStyleAutoDetect,
-		AuthCodeOption:    oauth2.AccessTypeOffline,
-		Config:            ConfigDeezer(&redirectOpts),
+func BaseSaveToken(clientId string, token *oauth2.Token, cachePath []string) error {
+	cache, err := BaseLoadTokenCache(clientId, cachePath)
+	if err != nil {
+		return err
 	}
 
-	// Start HTTP server to handle Deezer API redirect callback
-	http.HandleFunc("/"+innerSO.Path, httpCb)
-	// fix the below function so that it actually serves with a handler and not nil
-	go http.ListenAndServe(fmt.Sprintf(":%s", innerSO.Port), nil)
-	debug.Log("Listening on http://:%s/%s", innerSO.Port, innerSO.Path)
-	go exchangeAccessCodeForToken(innerSO)
-	debug.Log("Waiting for access code")
+	cache[clientId] = token
+	return os.SaveJSON(cachePath, cache)
+}
 
-	payload := <-tokenChannel // hangs here
-	debug.Log("Got access code")
-	debug.Log("payload: %+v", payload)
+var saveTokenDbg = debug.Spawn("SaveToken")
 
-	return payload.Token, payload.Error
+func SaveToken(clientId string, token *oauth2.Token) error {
+	paths, err := os.GetHomeDirWithPaths(_cachePath)
+	if err != nil {
+		return err
+	}
+	saveTokenDbg.Log("saved clientId: %s", clientId)
+	return BaseSaveToken(clientId, token, paths)
 }
 
 func genHandleRedirectCallback(codeField string, accessCodeChannel chan string) HttpCallback {
