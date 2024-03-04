@@ -5,11 +5,11 @@ go 1.21
 require (
 	github.com/bogem/id3v2 v1.2.0
 	github.com/dhowden/tag v0.0.0-20220618230019-adf36e896086
-	github.com/go-openapi/errors v0.20.4
+	github.com/go-openapi/errors v0.21.1
 	github.com/nmccready/go-debug v0.5.0
 	github.com/nmccready/oauth2 v0.0.0-20231123215649-1be96b3d7fc6
 	github.com/spf13/cobra v1.8.0
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 )
 
 require (
